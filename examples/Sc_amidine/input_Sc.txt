@@ -1,0 +1,44 @@
+//information on the structure
+structure Sc_amidine.mol2
+support 29SiO2
+confidence_level 90
+
+//Structural variables
+z_distance -1 3 41
+rotate_x 9
+rotate_y 9
+	
+bond  1 13 4
+bond  2  5 4
+bond  3  6 4
+bond 11 14 4
+bond 12 15 4
+
+//Constraints
+collision_distance 2.5
+
+//REDOR data
+curve Sc_methyls.txt
+7
+8
+9
+10
+16
+17
+18
+19
+end
+
+curve Sc_iPr.txt
+5
+6
+14
+15
+end
+
+curve Sc_CH.txt
+4
+13
+end
+
+

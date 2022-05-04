@@ -1,0 +1,59 @@
+//information on the structure
+structure RhCOD_AEP.mol2
+support 29SiO2
+max_structures 100
+confidence_level 80
+
+//structural variables
+z_distance 2 7 51	
+rotate_x  18
+rotate_y  18
+
+//constraints
+custoff_rmsd 3
+
+//REDOR data
+curve curve1.txt
+7
+end
+
+curve curve2.txt
+8
+end
+
+curve curve3.txt
+5
+6
+10
+end
+
+curve curve4.txt
+9
+end
+
+curve curve5.txt
+11
+12
+14
+15
+16
+20
+21
+22
+23
+24
+end
+
+curve curve6.txt
+17
+18
+19
+13
+end
+
+curve curve7.txt
+25
+end
+
+
+

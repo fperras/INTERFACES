@@ -1,0 +1,48 @@
+//Information on the structure
+structure Ir_pincer.mol2
+confidence_level 95
+max_structures 100
+support 27Al2O3
+
+//variables
+z_distance -1 6 41	
+rotate_x  360
+
+//constraints
+collision_distance 1.5
+
+//REDOR data
+curve curve_A.txt
+4
+end
+
+curve curve_C.txt
+5
+7
+end
+
+curve curve_D.txt
+19
+20
+end
+
+curve curve_EF.txt
+9
+10
+21
+end
+
+curve curve_G.txt
+12
+16
+end
+
+curve curve_H.txt
+6
+8
+end
+
+curve curve_K.txt
+22
+23
+end
