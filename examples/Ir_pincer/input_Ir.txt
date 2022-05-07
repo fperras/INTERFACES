@@ -12,37 +12,23 @@ rotate_x  360
 collision_distance 1.5
 
 //REDOR data
-curve curve_A.txt
-4
-end
+surface-curve curve_A.txt 1.0
+detected_spins 4
 
-curve curve_C.txt
-5
-7
-end
+surface-curve curve_C.txt 1.0
+detected_spins 5 7
 
-curve curve_D.txt
-19
-20
-end
+surface-curve curve_D.txt 1.0
+detected_spins 19 20
 
-curve curve_EF.txt
-9
-10
-21
-end
+surface-curve curve_EF.txt 1.0
+detected_spins 9 10 21
 
-curve curve_G.txt
-12
-16
-end
+surface-curve curve_G.txt 1.0
+detected_spins 12 16
 
-curve curve_H.txt
-6
-8
-end
+surface-curve curve_H.txt 1.0
+detected_spins 6 8
 
-curve curve_K.txt
-22
-23
-end
+surface-curve curve_K.txt 1.0
+detected_spins 22 23
