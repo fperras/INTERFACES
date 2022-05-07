@@ -1,4 +1,3 @@
-#include "REDOR_data.hpp"
 #include "affected_atoms.hpp"
 #include "alterations.hpp"
 #include "overlay_structures.hpp"
@@ -9,8 +8,8 @@ int main(){
     int I, i = 0, j = 0, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
-    double collision_distance = 1.5, scaling_factor=1.0;
-    vector<vector<int>> REDOR_atom_index;
+    double collision_distance = 1.5;
+    vector<vector<int>> REDOR_det_index, REDOR_rec_index;
     FILE *input, *mol2_file, *out, *error_file;
 
     printf("**********************************************************\n");
@@ -58,11 +57,6 @@ int main(){
             sprintf(keyword,"void");
         }
 
-        else if(strcmp(keyword, "scaling_factor")==0){
-            sscanf(buffer,"%s %lf",&keyword, &scaling_factor);
-            sprintf(keyword,"void");
-        }
-
         else if(strcmp(keyword, "rotate_x")==0){
             sscanf(buffer,"%s %d",&keyword, &N_steps_X);
             sprintf(keyword,"void");
@@ -85,10 +79,16 @@ int main(){
             sprintf(keyword,"void");
         }
         //These calls are counted to determine the number of curves, bonds, and constraints, but they are not read yet.
-        else if(strcmp(keyword, "curve")==0){
+        else if(strcmp(keyword, "surface-curve")==0){
             N_curves++;
             sprintf(keyword,"void");
         }
+
+        else if(strcmp(keyword, "intramolecular-curve")==0){
+            N_curves++;
+            sprintf(keyword,"void");
+        }
+
         else if(strcmp(keyword, "bond")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
@@ -106,8 +106,9 @@ int main(){
     //Knowing the quantity of these variables the arrays to contain their values are created and the file is read a second time to extract the values.
     struct Bond bond[N_rotatable_bonds];
     struct Constraint constraint[N_constraints];
-    int bond_index=0, Nconst=0, Nspins[N_curves];
+    int bond_index=0, Nconst=0, Nspins[N_curves], curve_type[N_curves], Nrecspins[N_curves];
     char curve_filename[N_curves][120];
+    double scaling_factor[N_curves];
     N_curves = 0;
 
     input=fopen(input_filename,"r");
@@ -121,28 +122,166 @@ int main(){
                 bond_index++;
                 sprintf(keyword,"void");
             }
-            else if(strcmp(keyword, "curve")==0){
-                REDOR_atom_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s",&keyword,&curve_filename[N_curves]);
+
+
+            else if(strcmp(keyword, "surface-curve")==0){
+                REDOR_det_index.push_back(vector<int>());
+                REDOR_rec_index.push_back(vector<int>());
+                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
+                curve_type[N_curves]=0;
+
+                if((scaling_factor[N_curves]>1.)||(scaling_factor[N_curves]<=0.)){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[N_curves],curve_filename[N_curves]);
+                    fclose(error_file);
+                    scaling_factor[N_curves]=1.0;
+                }
+
                 N_curves++;
                 j=0;
-                do{
+
+                fgets(buffer, sizeof(buffer), input);
+                sscanf(buffer,"%s",&keyword);
+                if(strcmp(keyword, "detected_spins")==0){
+                    char *ptr = buffer, word[32];
+                    sscanf(ptr,"%s",word);
+                    ptr = strstr(ptr, word);
+                    ptr += strlen(word); //skip the keyword
+                    j=0;
+                    while((sscanf(ptr,"%s",word)) == 1) {
+                        REDOR_det_index[i].push_back(0);
+                        REDOR_rec_index[i].push_back(0);
+                        REDOR_det_index[i][j]=atoi(word)-1;
+                        REDOR_rec_index[i][j]=0;
+                        ptr = strstr(ptr, word);  // Find where the current word starts.
+                        ptr += strlen(word); // Skip past the current word.
+                        j++;
+                    }
+                    Nspins[i]=j;
+
+                }
+                else{
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                    fclose(error_file);
+                    exit(1);
+                }
+                i++;
+                sprintf(keyword,"void");
+            }//surface_curve
+
+            else if(strcmp(keyword, "intramolecular-curve")==0){
+                REDOR_det_index.push_back(vector<int>());
+                REDOR_rec_index.push_back(vector<int>());
+                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
+                curve_type[N_curves]=1;
+
+                if((scaling_factor[N_curves]>1.)||(scaling_factor[N_curves]<0.)){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[N_curves],curve_filename[N_curves]);
+                    fclose(error_file);
+                    scaling_factor[N_curves]=1.0;
+                }
+
+                N_curves++;
+                j=0;
+
                     fgets(buffer, sizeof(buffer), input);
                     sscanf(buffer,"%s",&keyword);
 
-                    if(strcmp(keyword, "end")==0){
+                    if(strcmp(keyword, "detected_spins")==0){
+                       char *ptr = buffer, word[32];
+                       sscanf(ptr,"%s",word);
+                       ptr = strstr(ptr, word);
+                       ptr += strlen(word); //skip the keyword
+                       j=0;
+                        while((sscanf(ptr,"%s",word)) == 1) {
+                            REDOR_det_index[i].push_back(0);
+                            REDOR_det_index[i][j]=atoi(word)-1;
+                            ptr = strstr(ptr, word);  // Find where the current word starts.
+                            ptr += strlen(word); // Skip past the current word.
+                            j++;
+                        }
                         Nspins[i]=j;
-                        break;
+
+                        fgets(buffer, sizeof(buffer), input);
+                        sscanf(buffer,"%s",&keyword);
+
+                       if(strcmp(keyword, "recoupled_spins")==0){
+                       char *ptr = buffer, word[32];
+                       sscanf(ptr,"%s",word);
+                       ptr = strstr(ptr, word);
+                       ptr += strlen(word); //skip the keyword
+                       j=0;
+                        while((sscanf(ptr,"%s",word)) == 1) {
+                            REDOR_rec_index[i].push_back(0);
+                            REDOR_rec_index[i][j]=atoi(word)-1;
+                            ptr = strstr(ptr, word);  // Find where the current word starts.
+                            ptr += strlen(word); // Skip past the current word.
+                            j++;
+                        }
+                        Nrecspins[i]=j;
+                    }
+                       else{
+                           error_file=fopen(error_filename,"a");
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                           fclose(error_file);
+                           exit(1);
+                        }
                     }
 
-                    REDOR_atom_index[i].push_back(0);
-                    sscanf(buffer, "%d", &REDOR_atom_index[i][j]);
-                    REDOR_atom_index[i][j] = REDOR_atom_index[i][j]-1;
-                    j++;
-                }while(strcmp(keyword, "end")!=0);
+                    else if(strcmp(keyword, "recoupled_spins")==0){
+                       char *ptr = buffer, word[32];
+                       sscanf(ptr,"%s",word);
+                       ptr = strstr(ptr, word);
+                       ptr += strlen(word); //skip the keyword
+                       j=0;
+                        while((sscanf(ptr,"%s",word)) == 1) {
+                            REDOR_rec_index[i].push_back(0);
+                            REDOR_rec_index[i][j]=atoi(word)-1;
+                            ptr = strstr(ptr, word);  // Find where the current word starts.
+                            ptr += strlen(word); // Skip past the current word.
+                            j++;
+                        }
+                        Nrecspins[i]=j;
+
+                        fgets(buffer, sizeof(buffer), input);
+                        sscanf(buffer,"%s",&keyword);
+
+                       if(strcmp(keyword, "detected_spins")==0){
+                       char *ptr = buffer, word[32];
+                       sscanf(ptr,"%s",word);
+                       ptr = strstr(ptr, word);
+                       ptr += strlen(word); //skip the keyword
+                       j=0;
+                        while((sscanf(ptr,"%s",word)) == 1) {
+                            REDOR_det_index[i].push_back(0);
+                            REDOR_det_index[i][j]=atoi(word)-1;
+                            ptr = strstr(ptr, word);  // Find where the current word starts.
+                            ptr += strlen(word); // Skip past the current word.
+                            j++;
+                        }
+                        Nspins[i]=j;
+
+                    }
+                       else{
+                           error_file=fopen(error_filename,"a");
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                           fclose(error_file);
+                           exit(1);
+                        }
+                    }
+
+                    else{
+                        error_file=fopen(error_filename,"a");
+                        fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                        fclose(error_file);
+                        exit(1);
+                    }
                     i++;
-                sprintf(keyword,"void");
-            }
+            }//intramolecular curve
+
+
             else if(strcmp(keyword, "distance_constraint")==0){
                 sscanf(buffer,"%s %d %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
@@ -270,8 +409,9 @@ int main(){
     vector<vector<vector<double>>> X2;
     X2.resize(N_curves, vector<vector<double>>(200,vector<double>(101,0.)));
     for(i=0; i<N_curves; i++){
-        create_X2_table(curve_filename[i], support, element[REDOR_atom_index[i][0]], X2[i],scaling_factor, Nspins[i]);
+        create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i], Nspins[i], curve_type[i]);
     }
+
 
     //This function will use the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation about a given bond.
@@ -417,8 +557,8 @@ int main(){
             //Here we loop over the different curves to calculate the distance and STD index of that structure
             //in the Chi^2 table
             for(kk=0; kk<N_curves; kk++){
-                d_indices[kk] = get_distance_index(REDOR_atom_index, xyz_priv, N_curves, kk);
-                std_indices[kk] = get_STDEV_index(REDOR_atom_index, xyz_priv, N_curves, kk);
+                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
+                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
                 curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
                 curve_chi2_min[kk] = (curve_chi2[kk]<curve_chi2_min[kk])*curve_chi2[kk] + (curve_chi2[kk]>=curve_chi2_min[kk])*curve_chi2_min[kk] ;
             }
@@ -485,8 +625,8 @@ int main(){
 
     //store the distance information for the best-fit structure
     for(i=0;i<N_curves;i++){
-        distance_BSL[i][0] = get_average_distance(REDOR_atom_index, xyz_best, N_curves, i);
-        stdev_BSL[i][0] = get_STDEV(REDOR_atom_index, xyz_best, N_curves, i);
+        distance_BSL[i][0] = get_average_distance(REDOR_det_index,REDOR_rec_index, xyz_best, i,curve_type[i]);
+        stdev_BSL[i][0] = get_STDEV(REDOR_det_index,REDOR_rec_index, xyz_best, i,curve_type[i]);
     }
 
     //the max_Chi2 function returns the highest allowable Chi^2 value given a minimum value and an error range
@@ -585,8 +725,8 @@ int main(){
         if(check_constraints == 0){
             check_chi2_threshold = 0;
             for(kk=0; kk<N_curves; kk++){
-                d_indices[kk] = get_distance_index(REDOR_atom_index, xyz_priv, N_curves, kk);
-                std_indices[kk] = get_STDEV_index(REDOR_atom_index, xyz_priv, N_curves, kk);
+                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);
+                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);
                 curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
                     if(curve_chi2[kk]>curve_chi2_max[kk]){
                         check_chi2_threshold++;
@@ -668,5 +808,5 @@ int main(){
     compile_all_mol2_files(base_iteration_filename, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
-    write_fits(d_indices_range, std_indices_range, base_iteration_filename, N_curves, support, REDOR_atom_index, element,curve_filename, scaling_factor, Nspins);
+    write_fits(d_indices_range, std_indices_range, base_iteration_filename, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor, Nspins, curve_type);
 }//end int main

@@ -479,5 +479,7 @@ double d_prob(double distance, double d_mean, double d_std, vector< vector<doubl
 	d_index= 200 + round(distance*10+0.001);
 	d_index = (d_index>400)*400 + ((d_index<=400) && (d_index>0))*d_index;
 
+	//printf("gaussians[%d][%d] = %lf\n",d_index,std_index,gaussians[d_index][std_index]);
+
 	return gaussians[d_index][std_index];
 }
