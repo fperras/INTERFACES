@@ -6,10 +6,9 @@
 #include <vector>
 using namespace std;
 
-int translate_atom_Z(double *xyz, double distance){
+void translate_atom_Z(double *xyz, double distance){
     //Translates xyz coordinates of one atom up by distance along the Z direction
     xyz[2]=xyz[2]+distance;
-    return 0;
 }
 
 void translate_molecule_Z(int N_atoms, double (*xyz)[3], double distance){
@@ -21,37 +20,32 @@ void translate_molecule_Z(int N_atoms, double (*xyz)[3], double distance){
     }
 }
 
-int translate_atom_X(double *xyz, double distance){
+void translate_atom_X(double *xyz, double distance){
     //Translates xyz coordinates of one atom up by distance along the X direction
     xyz[0]=xyz[0]+distance;
-    return 0;
 }
 
-int translate_molecule_X(int N_atoms, double (*xyz)[3], double distance){
+void translate_molecule_X(int N_atoms, double (*xyz)[3], double distance){
     //Translates xyz coordinates of entire molecule up by distance along the X direction
     int i;
 
     for(i=0; i<N_atoms; i++){
     translate_atom_X(xyz[i],distance);
     }
-    return 0;
 }
 
-int translate_atom_Y(double *xyz, double distance){
+void translate_atom_Y(double *xyz, double distance){
     //Translates xyz coordinates of one atom up by distance along the Y direction
-
     xyz[1]=xyz[1]+distance;
-    return 0;
 }
 
-int translate_molecule_Y(int N_atoms, double (*xyz)[3], double distance){
+void translate_molecule_Y(int N_atoms, double (*xyz)[3], double distance){
     //Translates xyz coordinates of entire molecule up by distance along the Y direction
     int i;
 
     for(i=0; i<N_atoms; i++){
     translate_atom_Y(xyz[i],distance);
     }
-    return 0;
 }
 
 void generate_bond_rot_matrix(double (*R)[3], double *bond1, double *bond2, double angle){
@@ -132,47 +126,51 @@ void rotate_molecule_around_Z(int N_atoms, double (*xyz)[3], double angle){
 
 void rotate_molecule_around_X(int N_atoms, double (*xyz)[3], double angle){
     //Rotates an entire molecule around its center in the X direction
-    int i,j;
-    double X_vec[3],origin[3] = {0.,0.,0.};
+    if(angle!=0.0){
+        int i,j;
+        double X_vec[3],origin[3] = {0.,0.,0.};
 
-    for(i=0;i<N_atoms;i++){
+        for(i=0;i<N_atoms;i++){
+            for(j=0;j<3;j++){
+                origin[j] = origin[j] + xyz[i][j]/N_atoms;
+        }}
+
         for(j=0;j<3;j++){
-            origin[j] = origin[j] + xyz[i][j]/N_atoms;
-    }}
+            X_vec[j] = origin[j];
+        }
+        X_vec[0]=origin[0]+1.;
 
-    for(j=0;j<3;j++){
-        X_vec[j] = origin[j];
-    }
-    X_vec[0]=origin[0]+1.;
+        double R[4][3];
+        generate_bond_rot_matrix(R, origin, X_vec, angle);
 
-    double R[4][3];
-    generate_bond_rot_matrix(R, origin, X_vec, angle);
-
-    for(i=0;i<N_atoms;i++){
-        rotate_around_bond2(xyz[i],R);
+        for(i=0;i<N_atoms;i++){
+            rotate_around_bond2(xyz[i],R);
+        }
     }
 }
 
 void rotate_molecule_around_Y(int N_atoms, double (*xyz)[3], double angle){
     //Rotates an entire molecule around its center in the Y direction
-    int i,j;
-    double Y_vec[3],origin[3] = {0.,0.,0.};
+    if(angle!=0.0){
+        int i,j;
+        double Y_vec[3],origin[3] = {0.,0.,0.};
 
-    for(i=0;i<N_atoms;i++){
+        for(i=0;i<N_atoms;i++){
+            for(j=0;j<3;j++){
+                origin[j] = origin[j] + xyz[i][j]/N_atoms;
+        }}
+
         for(j=0;j<3;j++){
-            origin[j] = origin[j] + xyz[i][j]/N_atoms;
-    }}
+            Y_vec[j] = origin[j];
+        }
+        Y_vec[1]=origin[1]+1.;
 
-    for(j=0;j<3;j++){
-        Y_vec[j] = origin[j];
-    }
-    Y_vec[1]=origin[1]+1.;
+        double R[4][3];
+        generate_bond_rot_matrix(R, origin, Y_vec, angle);
 
-    double R[4][3];
-    generate_bond_rot_matrix(R, origin, Y_vec, angle);
-
-    for(i=0;i<N_atoms;i++){
-        rotate_around_bond2(xyz[i],R);
+        for(i=0;i<N_atoms;i++){
+            rotate_around_bond2(xyz[i],R);
+        }
     }
 }
 
