@@ -38,7 +38,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     sprintf(error_filename,"Errors.txt");
     FILE *error_file;
 
-    static double Pi = 3.1415926535897932384626433;
+    double Pi = 3.1415926535897932384626433;
     char buffer[128], crap[3], element[N_atoms][3];
     int N_structures,N_total_atoms,i,j,k,line_Atoms,junk, atom_id[N_atoms];
     int compiled_mol2_filename_len=strlen(compiled_mol2_filename);
