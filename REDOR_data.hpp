@@ -161,8 +161,8 @@ int find_Npoints(const char *filename){
 	char error_filename[128];
 	sprintf(error_filename,"Errors.txt");
     	FILE *error_file, *fp;
-	int Npoints=1;
-	char ch;
+	int Npoints=0;
+	char ch = '/0', p_ch = '/n';
 
 	fp=fopen(filename,"r");
 
@@ -175,9 +175,13 @@ int find_Npoints(const char *filename){
 
 	while(!feof(fp)){
 		ch = fgetc(fp);
-		if(ch == '\n')
-		Npoints++;
+		if(ch == '\n'  &&  p_ch != '\n')
+			Npoints++;
+		p_ch = ch;
 	}
+	
+	if (p_ch != '\n')
+        	Npoints++;
 
 	fclose(fp);
 	return Npoints;
