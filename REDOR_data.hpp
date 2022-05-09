@@ -160,19 +160,17 @@ int find_Npoints(const char *filename){
     //Returns the number of points in a REDOR curve file
 	char error_filename[128];
 	sprintf(error_filename,"Errors.txt");
-    FILE *error_file;
-
-	FILE *fp;
+    	FILE *error_file, *fp;
 	int Npoints=1;
 	char ch;
 
 	fp=fopen(filename,"r");
 
 	if(fp == NULL){
-        error_file=fopen(error_filename,"a");
+        	error_file=fopen(error_filename,"a");
 		fprintf(error_file, "\nERROR: could not find Npoints in file %s\n", filename);
-        fclose(error_file);
-        exit(1);
+        	fclose(error_file);
+        	exit(1);
 	}
 
 	while(!feof(fp)){
