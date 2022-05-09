@@ -2,6 +2,7 @@
 #include "alterations.hpp"
 #include "overlay_structures.hpp"
 #include "probability_ellipsoids.hpp"
+#include <ctype.h>
 
 int main(){
     char input_filename[120], mol2_filename[120],  output_filename[128], error_filename[128], buffer[256], keyword[64], support[32];
@@ -385,6 +386,9 @@ int main(){
             for(i=0; i<N_atoms; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
                 sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], &element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
+                element[i][0]=toupper(element[i][0]);
+                element[i][1]=tolower(element[i][1]);
                 k++;
             }}
         else if(k==line_Bonds){
