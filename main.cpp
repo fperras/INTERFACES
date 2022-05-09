@@ -6,7 +6,7 @@
 
 int main(){
     char input_filename[120], mol2_filename[120],  output_filename[128], error_filename[128], buffer[256], keyword[64], support[32];
-    int I, i = 0, j = 0, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
+    int I, i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
     double collision_distance = 1.5;
@@ -20,7 +20,6 @@ int main(){
     printf("******************Ames Laboratory, 2022*******************\n");
     printf("**********************************************************\n");
     printf("**********************************************************\n");
-
 
     printf ("\nEnter the name of the input file you wish to open.\n");
     scanf ("%s", &input_filename);
@@ -57,12 +56,10 @@ int main(){
             sscanf(buffer,"%s %lf %lf %d",&keyword,&z_min, &z_max, &N_steps_Z);
             sprintf(keyword,"void");
         }
-
         else if(strcmp(keyword, "rotate_x")==0){
             sscanf(buffer,"%s %d",&keyword, &N_steps_X);
             sprintf(keyword,"void");
         }
-
         else if(strcmp(keyword, "rotate_y")==0){
             sscanf(buffer,"%s %d",&keyword, &N_steps_Y);
             sprintf(keyword,"void");
@@ -84,12 +81,10 @@ int main(){
             N_curves++;
             sprintf(keyword,"void");
         }
-
         else if(strcmp(keyword, "intramolecular-curve")==0){
             N_curves++;
             sprintf(keyword,"void");
         }
-
         else if(strcmp(keyword, "bond")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
@@ -100,9 +95,7 @@ int main(){
         }
     }
     fclose(input);
-    i=0;
-    j=0;
-    int k=0;
+    i=j=0;
 
     //Knowing the quantity of these variables the arrays to contain their values are created and the file is read a second time to extract the values.
     struct Bond bond[N_rotatable_bonds];
@@ -123,8 +116,6 @@ int main(){
                 bond_index++;
                 sprintf(keyword,"void");
             }
-
-
             else if(strcmp(keyword, "surface-curve")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
@@ -282,7 +273,6 @@ int main(){
                     i++;
             }//intramolecular curve
 
-
             else if(strcmp(keyword, "distance_constraint")==0){
                 sscanf(buffer,"%s %d %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
@@ -344,11 +334,9 @@ int main(){
         fclose(error_file);
         exit(1);
     }
-
-    i=0;
-    j=0;
-
+    
     //First the program extracts the line numbers where the atom and bond tables begin, in addition to the number of atoms and bonds.
+    i=j=0;
     while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
         sscanf(buffer,"%s",&keyword);
             if(strcmp(keyword, "@<TRIPOS>MOLECULE")==0){
@@ -377,9 +365,8 @@ int main(){
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
     char bond_type[N_bonds][20];
 
-    k = 1;
-
     //The mol2 file is opened for a second time to extract the coordinates and bond connections.
+    k=1;
     mol2_file=fopen(mol2_filename,"r");
     while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
         if(k==line_Atoms+1){
@@ -410,21 +397,22 @@ int main(){
 
     //Here the program created tables of Chi^2 values as a function of distance and standard deviation of distance
     //between the atom and the surface plane.  There is one table per atom.
+    //In the special case where there are two atoms contributing to a given REDOR curve, the program will calculate the
+    //average REDOR curve for the pair, otherwise a gaussian distribution is used.
     vector<vector<vector<double>>> X2;
     X2.resize(N_curves, vector<vector<double>>(200,vector<double>(101,0.)));
     for(i=0; i<N_curves; i++){
         create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i], Nspins[i], curve_type[i]);
     }
 
-
-    //This function will use the bond list from the mol2 file to determine what atoms will be affected by
+    //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation about a given bond.
     get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
 
     k=1;
-    int fnamer_len=strlen(mol2_filename)-5;
-    char base_iteration_filename[fnamer_len+1];
-    sprintf(base_iteration_filename,"%.*s",fnamer_len,mol2_filename);
+    int mol2_filename_len=strlen(mol2_filename)-5;
+    char filename_base[mol2_filename_len+1];
+    sprintf(filename_base,"%.*s",mol2_filename_len,mol2_filename);
 
     //We calculate the total number of structural iterations that will be done.
     //In order to make the program parallel it was necessary to have a single loop
@@ -440,10 +428,14 @@ int main(){
     int x_mod=iterations;
     iterations = iterations * N_steps_X;
     double x_angle = 2*Pi/N_steps_X;
+    if(N_steps_X==1)
+        x_angle=0.;
 
     int y_mod=iterations;
     iterations = iterations * N_steps_Y;
     double y_angle = 2*Pi/N_steps_Y;
+    if(N_steps_Y==1)
+        y_angle=0.;
 
     int z_mod=iterations;
     iterations = iterations * N_steps_Z;
@@ -465,7 +457,6 @@ int main(){
         best_struct_curve_chi2[i]=5000000;
         d_indices_min[i]=5000000;
         std_indices_min[i]=5000000;
-
     }
 
     //These arrays to store the average  and stdev distances of the (0)best fit structure, (1)Smallest distance and (2)Largest distance from the surface
@@ -482,7 +473,6 @@ int main(){
     //We also store the distance and std indices for this structure in order to supply its
     //simulated curves.
     printf("\nWill perform a search over a total of %d conformations\n",iterations);
-
     printf("\nSearching for the best-fit structure\n");
     int top_thread;
 
@@ -504,7 +494,6 @@ int main(){
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
             nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
-
             for(kk=jj+1; kk<N_rotatable_bonds;kk++){
                 nominator=nominator - bond_position[kk] * bond[kk].mod;
             }
@@ -517,7 +506,7 @@ int main(){
         rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-            angle=2*Pi/bond[jj].N_steps*bond_position[jj];
+            angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
             generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
             //rotating all of atoms involved around the bond
             for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
@@ -555,9 +544,8 @@ int main(){
         //The collisions function returns true if 2 atoms are within 1 Angstrom from each other, or if
         //one atom falls at a distance below collision_distance from the surface.  A distance of exactly
         //zero is ignored as this is assumed to be a surface atom.
-        if(!collisions(xyz_priv, N_atoms, collision_distance)){
         if(check_constraints == 0){
-
+        if(!collisions(xyz_priv, N_atoms, collision_distance)){
             //Here we loop over the different curves to calculate the distance and STD index of that structure
             //in the Chi^2 table
             for(kk=0; kk<N_curves; kk++){
@@ -595,7 +583,7 @@ int main(){
                 //each processor has its own "best" structure and these are compared at the end to determine
                 //which one is the actual best-fit structure
                 remove(min_chi2_output_filename);
-                sprintf(min_chi2_output_filename, "%s_%d_best.mol2", base_iteration_filename,omp_get_thread_num());
+                sprintf(min_chi2_output_filename, "%s_%d_best.mol2", filename_base,omp_get_thread_num());
                 write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
             }
 
@@ -610,13 +598,13 @@ int main(){
         exit(1);
     }
 
-    //We delete the individual thread best structures, leaving only the true best-fir structure mol2 file
+    //We delete the individual thread best structures, leaving only the true best-fit structure mol2 file
     char best_filename[128];
-    sprintf(best_filename,"%s_best.mol2", base_iteration_filename);
+    sprintf(best_filename,"%s_best.mol2", filename_base);
     #pragma omp parallel
     {
         char thread_filename[128];
-        sprintf(thread_filename,"%s_%d_best.mol2", base_iteration_filename,omp_get_thread_num());
+        sprintf(thread_filename,"%s_%d_best.mol2", filename_base,omp_get_thread_num());
 
         if(omp_get_thread_num()==top_thread)
             rename(thread_filename,best_filename);
@@ -661,15 +649,16 @@ int main(){
     #pragma omp parallel for
     for(int it=0;it<iterations;it++){
         if((acceptable_structures+other_structures)>max_acceptable_struct){
+            //This is a safety feature that will limit the number of mol2 files that the program will save
             it = iterations;
             max_accept_failsafe = 1;
         }
+        
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         int check_chi2_threshold;
         double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3];
         char min_chi2_output_filename[128];
-
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
         int z_position = int(floor(it/z_mod));
@@ -678,7 +667,6 @@ int main(){
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
             nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
-
             for(kk=jj+1; kk<N_rotatable_bonds;kk++){
                 nominator=nominator - bond_position[kk] * bond[kk].mod;
             }
@@ -725,8 +713,8 @@ int main(){
             }
         }
 
-        if(!collisions(xyz_priv, N_atoms, collision_distance)){
         if(check_constraints == 0){
+        if(!collisions(xyz_priv, N_atoms, collision_distance)){
             check_chi2_threshold = 0;
             for(kk=0; kk<N_curves; kk++){
                 d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);
@@ -746,7 +734,7 @@ int main(){
                 //These are later compiled into two overlay files.
                 if(deviation<cutoff_RMSD){
                     acceptable_structures++;
-                    sprintf(min_chi2_output_filename, "%s_struct%d.mol2", base_iteration_filename, acceptable_structures);
+                    sprintf(min_chi2_output_filename, "%s_struct%d.mol2", filename_base, acceptable_structures);
                     printf("(%d) Acceptable structure found\n", acceptable_structures);
                     write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
 
@@ -761,7 +749,7 @@ int main(){
                 }
                 else{
                     other_structures++;
-                    sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", base_iteration_filename, other_structures);
+                    sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", filename_base, other_structures);
                     printf("(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
                     write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
                 }
@@ -769,11 +757,9 @@ int main(){
         }}
     }
 
-
-
     if(acceptable_structures <= 1){
         error_file=fopen(error_filename,"a");
-        fprintf(error_file, "\nERROR: Only one acceptable structure found with the given constraints\n");
+        fprintf(error_file, "\nERROR: Only one acceptable structure found within the given constraints\n");
         fclose(error_file);
         exit(1);
     }
@@ -783,16 +769,16 @@ int main(){
 
     //Next we will write the structure overlay files
     char overlay_filename[128];
-    sprintf(overlay_filename, "%s_overlay.mol2", base_iteration_filename);
+    sprintf(overlay_filename, "%s_overlay.mol2", filename_base);
 
     //if there are too many structures, erase the structures and exit the program
     if(max_accept_failsafe == 1){
-        for(i=0;i<acceptable_structures;i++){
-            sprintf(overlay_filename, "%s_struct%d.mol2", base_iteration_filename,i);
+        for(i=0;i<=acceptable_structures;i++){
+            sprintf(overlay_filename, "%s_struct%d.mol2", filename_base,i);
             remove(overlay_filename);
         }
-        for(i=0;i<other_structures;i++){
-            sprintf(overlay_filename, "other_%s_struct%d.mol2", base_iteration_filename,i);
+        for(i=0;i<=other_structures;i++){
+            sprintf(overlay_filename, "other_%s_struct%d.mol2", filename_base,i);
             remove(overlay_filename);
         }
         error_file=fopen(error_filename,"a");
@@ -805,12 +791,12 @@ int main(){
     printf("\nOverlaying Structures\n");
 
     //for primary structures
-    compile_mol2_files(base_iteration_filename, acceptable_structures);
+    compile_mol2_files(filename_base, acceptable_structures);
     create_cif(overlay_filename, N_atoms+5);
 
     //for all structures
-    compile_all_mol2_files(base_iteration_filename, acceptable_structures, other_structures);
+    compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
-    write_fits(d_indices_range, std_indices_range, base_iteration_filename, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor, Nspins, curve_type);
+    write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor, Nspins, curve_type);
 }//end int main
