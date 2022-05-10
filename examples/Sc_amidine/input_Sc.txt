@@ -18,14 +18,12 @@ bond 12 15 4
 collision_distance 2.5
 
 //REDOR data
-surface-curve Sc_methyls.txt 1.0
+surface-REDOR SiO2-methyls.txt 1.0
 detected_spins 7 8 9 10 16 17 18 19
 
-surface-curve Sc_iPr.txt 1.0
+surface-REDOR SiO2-iPr.txt 1.0
 detected_spins 5 6 14 15
 
-surface-curve Sc_CH.txt 1.0
+surface-REDOR SiO2-CH.txt 1.0
 detected_spins 4 13
-
-
 
