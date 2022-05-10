@@ -43,11 +43,9 @@ int write_mol2(char *filename, int N_atoms, int N_bonds, int *atom_id, char (*el
 void add_surface(char *mol2_filename){
     //This function adds 5 bonded silicon atoms at the material surface
     //These are useful for generating Figures and visualizing the orientation of the complex on the surface
-
     FILE *fp, *out;
-    int atom_index = 1, i = 1, j = 1, k = 1, line_Atoms, line_Bonds;
-    int N_atoms, N_bonds;
-    char error_filename[128];
+    int i, j, k, line_Atoms, line_Bonds, N_atoms, N_bonds;
+    char error_filename[128], buffer[120];
     sprintf(error_filename,"Errors.txt");
     FILE *error_file;
 
@@ -58,26 +56,26 @@ void add_surface(char *mol2_filename){
         fclose(error_file);
         exit(1);
     }
-    char line_content[120];
 
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-            if(strcmp(line_content, "@<TRIPOS>MOLECULE\n")==0){
-                fgets(line_content, sizeof(line_content), fp);
-                fgets(line_content, sizeof(line_content), fp);
-                sscanf(line_content,"%d %d",&N_atoms, &N_bonds);
+    i=j=1;
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+            if(strcmp(buffer, "@<TRIPOS>MOLECULE\n")==0){
+                fgets(buffer, sizeof(buffer), fp);
+                fgets(buffer, sizeof(buffer), fp);
+                sscanf(buffer,"%d %d",&N_atoms, &N_bonds);
                 i++; j++;
                 i++; j++;
             }
-            if(strcmp(line_content, "@<TRIPOS>ATOM\n")==0){
+            if(strcmp(buffer, "@<TRIPOS>ATOM\n")==0){
                 line_Atoms = i;
                 }
-            if(strcmp(line_content, "@<TRIPOS>BOND\n")==0){
+            if(strcmp(buffer, "@<TRIPOS>BOND\n")==0){
                 line_Bonds = j;
             }
             i++; j++;
     }
-    k = 1;
     fclose(fp);
+
 
     char add_surface_filename[100];
     int structure_filename_len=strlen(mol2_filename)-5;
@@ -85,11 +83,9 @@ void add_surface(char *mol2_filename){
 
     sprintf(base_filename,"%.*s",structure_filename_len, mol2_filename);
     sprintf(add_surface_filename, "%s_with_surface.mol2", base_filename);
-
     remove(add_surface_filename);
 
     fp=fopen(mol2_filename, "r");
-
     out=fopen(add_surface_filename,"a");
 
     if(out==NULL){
@@ -99,25 +95,26 @@ void add_surface(char *mol2_filename){
         exit(1);
     }
 
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-        if(k==1){
+    i=1;
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+        if(i==1){
             fprintf(out,"@<TRIPOS>MOLECULE\n*****\n %d %d 0 0 0\n", N_atoms+5, N_bonds+4);
-            fgets(line_content, sizeof(line_content), fp);
-            fgets(line_content, sizeof(line_content), fp);
-            k=k+2;
+            fgets(buffer, sizeof(buffer), fp);
+            fgets(buffer, sizeof(buffer), fp);
+            i=i+2;
         }
-        else if(k==line_Atoms+N_atoms){
+        else if(i==line_Atoms+N_atoms){
             fprintf(out,"%d Si 0.0000 0.0000 0.0000 Si 1 UNL1 0.0000\n", N_atoms+1);
             fprintf(out,"%d Si 50.0000 50.0000 0.0000 Si 1 UNL1 0.0000\n", N_atoms+2);
             fprintf(out,"%d Si -50.0000 -50.0000 0.0000 Si 1 UNL1 0.0000\n", N_atoms+3);
             fprintf(out,"%d Si -50.0000 50.0000 0.0000 Si 1 UNL1 0.0000\n", N_atoms+4);
             fprintf(out,"%d Si 50.0000 -50.0000 0.0000 Si 1 UNL1 0.0000\n", N_atoms+5);
-            fprintf(out, "%s", line_content);
-            k++;
+            fprintf(out, "%s", buffer);
+            i++;
         }
         else{
-            fprintf(out, "%s", line_content);
-            k++;
+            fprintf(out, "%s", buffer);
+            i++;
         }
     }
     fclose(fp);
@@ -126,7 +123,6 @@ void add_surface(char *mol2_filename){
     fprintf(out,"%d %d %d 1\n", N_bonds+2, N_atoms+1, N_atoms+3);
     fprintf(out,"%d %d %d 1\n", N_bonds+3, N_atoms+1, N_atoms+4);
     fprintf(out,"%d %d %d 1\n", N_bonds+4, N_atoms+1, N_atoms+5);
-
     fclose(out);
 
     remove(mol2_filename);
@@ -136,25 +132,22 @@ void add_surface(char *mol2_filename){
 void compile_mol2_files(char *base_filename, int num_files){
     //This function combines a sequence of mol2 files into a single mol2 file showing their overlay
 
-    char error_filename[128];
+    char error_filename[128], buffer[120];
     sprintf(error_filename,"Errors.txt");
-    FILE *error_file;
-
-    FILE *fp, *in, *out;
-    int atom_index = 1, i = 1, j = 1, k = 1, m, line_Molecule, line_Atoms, line_Bonds;
-    int N_atoms, N_bonds;
+    FILE *error_file, *fp, *in, *out;
+    int atom_index = 1, i, j, k = 1, line_Molecule, line_Atoms, line_Bonds, N_atoms, N_bonds;
     int structure_filename_len=strlen(base_filename)+20;
     char structure_filename[structure_filename_len];
     sprintf(structure_filename, "%s_struct1.mol2", base_filename);
 
-    for(m=1; m<num_files+1; m++){
+    for(i=1; i<num_files+1; i++){
         //add surface molecules to each structure before reading
         char structure_filename_temp[100];
-        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, m);
+        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, i);
         add_surface(structure_filename_temp);
     }
 
-    //1) Open structure mol2 file and find Number of Atoms/Bonds & line for bond section
+    //1) Open structure mol2 file and find Number of Atoms/Bonds & line  numbers for atom and bond sections
     fp=fopen(structure_filename,"r");
     if(fp==NULL){
         error_file=fopen(error_filename,"a");
@@ -162,50 +155,48 @@ void compile_mol2_files(char *base_filename, int num_files){
         fclose(error_file);
         exit(1);
     }
-    char line_content[120];
 
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-            if(strcmp(line_content, "@<TRIPOS>MOLECULE\n")==0){
-                fgets(line_content, sizeof(line_content), fp);
-                fgets(line_content, sizeof(line_content), fp);
-                sscanf(line_content,"%d %d",&N_atoms, &N_bonds);
+    i=1;
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+            if(strcmp(buffer, "@<TRIPOS>MOLECULE\n")==0){
+                fgets(buffer, sizeof(buffer), fp);
+                fgets(buffer, sizeof(buffer), fp);
+                sscanf(buffer,"%d %d",&N_atoms, &N_bonds);
                 i++;
                 i++;
             }
-            else if(strcmp(line_content, "@<TRIPOS>BOND\n")==0){
+            else if(strcmp(buffer, "@<TRIPOS>BOND\n")==0){
                 line_Bonds = i;
             }
-            else if(strcmp(line_content, "@<TRIPOS>ATOM\n")==0){
+            else if(strcmp(buffer, "@<TRIPOS>ATOM\n")==0){
                 line_Atoms = i;
             }
             i++;
     }
+    fclose(fp);
 
     //2) Scan the bond section and store bond information
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
     char bond_type[N_bonds][20];
 
-    fclose(fp);
-
+    j=1;
     fp=fopen(structure_filename,"r");
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-        if(k==line_Bonds+1){
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+        if(j==line_Bonds+1){
             for(i=0; i<N_bonds; i++){
-                sscanf(line_content,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
-                fgets(line_content, sizeof(line_content), fp);
-                k++;
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                fgets(buffer, sizeof(buffer), fp);
+                j++;
             }}
         else{
-        k++;
+        j++;
         }
     }
     fclose(fp);
 
-    //3) make structure overlay
+    //3) create the structure overlay file.
     char overlay_filename[128];
-
     sprintf(overlay_filename, "%s_overlay.mol2", base_filename);
-
     remove(overlay_filename);
     out=fopen(overlay_filename,"w");
 
@@ -222,9 +213,9 @@ void compile_mol2_files(char *base_filename, int num_files){
     fclose(out);
 
     //5) Add the atom section from each individual file(Loop until m reaches the num_files)
-    for(m=1; m<num_files+1; m++){
+    for(k=1; k<num_files+1; k++){
         char structure_filename_temp[100];
-        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, m);
+        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, k);
 
         in=fopen(structure_filename_temp, "r");
         out=fopen(overlay_filename, "a");
@@ -235,21 +226,21 @@ void compile_mol2_files(char *base_filename, int num_files){
             fclose(error_file);
         }
 
-        k=1;
+        j=1;
         char arguments[8][16];
 
-        while(fgets(line_content, sizeof(line_content), in) != NULL){
-            if(k==line_Atoms+1){
+        while(fgets(buffer, sizeof(buffer), in) != NULL){
+            if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(line_content,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
-                    fgets(line_content, sizeof(line_content), in);
+                    fgets(buffer, sizeof(buffer), in);
                 }
-            k++;
+            j++;
             }
-            else{
-            k++;}
+            else
+                j++;
         }
         fclose(in);
         fclose(out);
@@ -260,26 +251,22 @@ void compile_mol2_files(char *base_filename, int num_files){
     out=fopen(overlay_filename, "a");
     fprintf(out, "\n@<TRIPOS>BOND\n");
 
-    for(m=0; m<num_files; m++){
+    for(j=0; j<num_files; j++){
         for(i=0; i<N_bonds; i++){
-            fprintf(out, "%d %d %d %s\n", bond_id[i]+(m*N_bonds), ori_atom_id[i]+(m*N_atoms), tar_atom_id[i]+(m*N_atoms), bond_type[i]);
-          //  printf("%d %d %d %s\n",bond_id[i], ori_atom_id[i], tar_atom_id[i], bond_type[i]);
+            fprintf(out, "%d %d %d %s\n", bond_id[i]+(j*N_bonds), ori_atom_id[i]+(j*N_atoms), tar_atom_id[i]+(j*N_atoms), bond_type[i]);
         }
     }
     fclose(out);
-
 }
 
 void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_other_files){
     //This function performs the same task as compile_mol2_files, however it will look for files also starting with other_
     //It also removes the said files after they have been read.
-    char error_filename[128], other_base_filename[128];
+    char error_filename[128], other_base_filename[128],overlay_filename[128],structure_filename_temp[128], buffer[128], arguments[8][16];;
     sprintf(error_filename,"Errors.txt");
     sprintf(other_base_filename,"other_%s_struct",base_filename);
-    FILE *error_file;
-
-    FILE *fp, *in, *out;
-    int atom_index = 1, i = 1, j = 1, k = 1, line_Molecule, line_Atoms, line_Bonds;
+    FILE *error_file,*fp, *in, *out;
+    int atom_index = 1, i, j, k = 1, line_Molecule, line_Atoms, line_Bonds;
     int N_atoms, N_bonds;
     int structure_filename_len=strlen(base_filename)+20;
     char structure_filename[structure_filename_len];
@@ -294,53 +281,48 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
         fclose(error_file);
         exit(1);
     }
-    char line_content[120];
 
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-            if(strcmp(line_content, "@<TRIPOS>MOLECULE\n")==0){
-                fgets(line_content, sizeof(line_content), fp);
-                fgets(line_content, sizeof(line_content), fp);
-                sscanf(line_content,"%d %d",&N_atoms, &N_bonds);
+    i=1;
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+            if(strcmp(buffer, "@<TRIPOS>MOLECULE\n")==0){
+                fgets(buffer, sizeof(buffer), fp);
+                fgets(buffer, sizeof(buffer), fp);
+                sscanf(buffer,"%d %d",&N_atoms, &N_bonds);
                 i++;
                 i++;
             }
-            else if(strcmp(line_content, "@<TRIPOS>BOND\n")==0){
+            else if(strcmp(buffer, "@<TRIPOS>BOND\n")==0){
                 line_Bonds = i;
             }
-            else if(strcmp(line_content, "@<TRIPOS>ATOM\n")==0){
+            else if(strcmp(buffer, "@<TRIPOS>ATOM\n")==0){
                 line_Atoms = i;
             }
             i++;
     }
+    fclose(fp);
 
     //2) Scan the bond section and store bond information
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
     char bond_type[N_bonds][20];
 
-    fclose(fp);
-
     fp=fopen(structure_filename,"r");
-    while(fgets(line_content, sizeof(line_content), fp) != NULL){
-        if(k==line_Bonds+1){
+    j=1;
+    while(fgets(buffer, sizeof(buffer), fp) != NULL){
+        if(j==line_Bonds+1){
             for(i=0; i<N_bonds; i++){
-                sscanf(line_content,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
-                fgets(line_content, sizeof(line_content), fp);
-                k++;
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                fgets(buffer, sizeof(buffer), fp);
+                j++;
             }}
         else{
-        k++;
+        j++;
         }
     }
     fclose(fp);
 
     //3) make structure overlay
-    char overlay_filename[128];
-
     sprintf(overlay_filename, "%s_overlay_all.mol2", base_filename);
-
     remove(overlay_filename);
-
-    int m;
     out=fopen(overlay_filename,"w");
 
     //4) Add the molecule section from primary structures
@@ -356,13 +338,9 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
     fclose(out);
 
     //5) Add the atom section from each individual primary file(Loop until m reaches the num_primary_files)
-    for(m=1; m<num_primary_files+1; m++){
-        char structure_filename_temp[100];
-        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, m);
-
+    for(k=1; k<num_primary_files+1; k++){
         //add surface molecules to each structure before reading...used for .cif file
-        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, m);
-
+        sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, k);
         in=fopen(structure_filename_temp, "r");
         out=fopen(overlay_filename, "a");
 
@@ -372,36 +350,29 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
             fclose(error_file);
         }
 
-        k=1;
-        char arguments[8][16];
-
-        while(fgets(line_content, sizeof(line_content), in) != NULL){
-            if(k==line_Atoms+1){
+        j=1;
+        while(fgets(buffer, sizeof(buffer), in) != NULL){
+            if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(line_content,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
-                    fgets(line_content, sizeof(line_content), in);
+                    fgets(buffer, sizeof(buffer), in);
                 }
-            k++;
+            j++;
             }
-            else{
-            k++;}
+            else
+                j++;
         }
         fclose(in);
         fclose(out);
         remove(structure_filename_temp);
     }
 
-    //6) Add the atom section from each individual other file(Loop until m reaches the num_other_files)
-    for(m=1; m<num_other_files+1; m++){
-        char structure_filename_temp[100];
-        sprintf(structure_filename_temp, "%s%d.mol2", other_base_filename, m);
-
-        //add surface molecules to each structure before reading...used for .cif file
+    //6) Add the atom section from each individual other file
+    for(k=1; k<num_other_files+1; k++){
+        sprintf(structure_filename_temp, "%s%d.mol2", other_base_filename, k);
         add_surface(structure_filename_temp);
-        sprintf(structure_filename_temp, "%s%d.mol2", other_base_filename, m);
-
         in=fopen(structure_filename_temp, "r");
         out=fopen(overlay_filename, "a");
 
@@ -411,35 +382,32 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
             fclose(error_file);
         }
 
-        k=1;
-        char arguments[8][16];
-
-        while(fgets(line_content, sizeof(line_content), in) != NULL){
-            if(k==line_Atoms+1){
+        j=1;
+        while(fgets(buffer, sizeof(buffer), in) != NULL){
+            if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(line_content,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
-                    fgets(line_content, sizeof(line_content), in);
+                    fgets(buffer, sizeof(buffer), in);
                 }
-            k++;
+            j++;
             }
-            else{
-            k++;}
+            else
+                j++;
         }
         fclose(in);
         fclose(out);
         remove(structure_filename_temp);
     }
-    atom_index=1;
 
     //7) Add the bond section using the bond information stored from earlier
     out=fopen(overlay_filename, "a");
     fprintf(out, "\n@<TRIPOS>BOND\n");
 
-    for(m=0; m<total_num_files; m++){
+    for(j=0; j<total_num_files; j++){
         for(i=0; i<N_bonds; i++){
-            fprintf(out, "%d %d %d %s\n", bond_id[i]+(m*N_bonds), ori_atom_id[i]+(m*N_atoms), tar_atom_id[i]+(m*N_atoms), bond_type[i]);
+            fprintf(out, "%d %d %d %s\n", bond_id[i]+(j*N_bonds), ori_atom_id[i]+(j*N_atoms), tar_atom_id[i]+(j*N_atoms), bond_type[i]);
         }
     }
     fclose(out);
