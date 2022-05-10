@@ -14,34 +14,34 @@ distance_constraint 18 19 1.8 2.2 //Pt-O bond length
 angle_constraint 20 19 18 80 100 //Cl-Pt-O angle
 angle_constraint 21 19 18 80 100 //Cl-Pt-O angle
 
-intramolecular-curve C1N1.txt 0.67
+intramolecular-REDOR C1N1.txt 0.67
 detected_spins 3 
 recoupled_spins 1
 
-intramolecular-curve T3N1.txt 0.67
+intramolecular-REDOR T3N1.txt 0.67
 detected_spins 22
 recoupled_spins 1
 
-intramolecular-curve Q4N1.txt 0.67
+intramolecular-REDOR Q4N1.txt 0.67
 detected_spins 23
 recoupled_spins 1
 
-intramolecular-curve TMSN1.txt 0.67
+intramolecular-REDOR TMSN1.txt 0.67
 detected_spins 24
 recoupled_spins 1
 
-intramolecular-curve C1N2.txt 0.81
+intramolecular-REDOR C1N2.txt 0.81
 detected_spins 3
 recoupled_spins 2
 
-intramolecular-curve T3N2.txt 0.81
+intramolecular-REDOR T3N2.txt 0.81
 detected_spins 22
 recoupled_spins 2
 
-intramolecular-curve Q4N2.txt 0.81
+intramolecular-REDOR Q4N2.txt 0.81
 detected_spins 23
 recoupled_spins 2
 
-intramolecular-curve TMSN2.txt 0.81
+intramolecular-REDOR TMSN2.txt 0.81
 detected_spins 24
 recoupled_spins 2
