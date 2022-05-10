@@ -14,29 +14,29 @@ distance_constraint 1 6  5.2 6.0
 dihedral_constraint 1 2 21 15 -180 0
 
 //REDOR data
-surface-curve Zn-curve1.txt 1.0
+surface-REDOR Zn-REDOR1.txt 1.0
 detected_spins 2
 
-surface-curve Zn-curve2.txt 1.0
+surface-REDOR Zn-REDOR2.txt 1.0
 detected_spins 4
 
-surface-curve Zn-curve3.txt 1.0
+surface-REDOR Zn-REDOR3.txt 1.0
 detected_spins 15 9 18
 
-surface-curve Zn-curve4.txt 1.0
+surface-REDOR Zn-REDOR4.txt 1.0
 detected_spins 13 19
 
-surface-curve Zn-curve5.txt 1.0
+surface-REDOR Zn-REDOR5.txt 1.0
 detected_spins 11 17
 
-surface-curve Zn-curve6.txt 1.0
+surface-REDOR Zn-REDOR6.txt 1.0
 detected_spins 14 20
 
-surface-curve Zn-curve7.txt 1.0
+surface-REDOR Zn-REDOR7.txt 1.0
 detected_spins 10 16
 
-surface-curve Zn-curve8.txt 1.0
+surface-REDOR Zn-REDOR8.txt 1.0
 detected_spins 6
 
-surface-curve Zn-curve9.txt 1.0
+surface-REDOR Zn-REDOR9.txt 1.0
 detected_spins 25 29
