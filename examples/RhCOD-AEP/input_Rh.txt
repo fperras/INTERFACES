@@ -12,25 +12,25 @@ rotate_y  18
 custoff_rmsd 3
 
 //REDOR data
-surface-curve curve1.txt 1.0
+surface-REDOR curve1.txt 1.0
 detected_spins 7
 
-surface-curve curve2.txt 1.0
+surface-REDOR curve2.txt 1.0
 detected_spins 8
 
-surface-curve curve3.txt 1.0
+surface-REDOR curve3.txt 1.0
 detected_spins 5 6 10
 
-surface-curve curve4.txt 1.0
+surface-REDOR curve4.txt 1.0
 detected_spins 9
 
-surface-curve curve5.txt 1.0
+surface-REDOR curve5.txt 1.0
 detected_spins 11 12 14 15 16 20 21 22 23 24
 
-surface-curve curve6.txt 1.0
+surface-REDOR curve6.txt 1.0
 detected_spins 17 18 19 13
 
-surface-curve curve7.txt 1.0
+surface-REDOR curve7.txt 1.0
 detected_spins 25
 
 
