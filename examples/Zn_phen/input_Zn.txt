@@ -1,6 +1,6 @@
 structure Zn-phen.mol2
 support 29SiO2
-confidence_level 60
+confidence_level 95
 
 //Structural variables
 bond  2  3  36
