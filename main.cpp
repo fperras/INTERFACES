@@ -77,11 +77,11 @@ int main(){
             sprintf(keyword,"void");
         }
         //These calls are counted to determine the number of curves, bonds, and constraints, but they are not read yet.
-        else if(strcmp(keyword, "surface-curve")==0){
+        else if(strcmp(keyword, "surface-REDOR")==0){
             N_curves++;
             sprintf(keyword,"void");
         }
-        else if(strcmp(keyword, "intramolecular-curve")==0){
+        else if(strcmp(keyword, "intramolecular-REDOR")==0){
             N_curves++;
             sprintf(keyword,"void");
         }
@@ -116,7 +116,7 @@ int main(){
                 bond_index++;
                 sprintf(keyword,"void");
             }
-            else if(strcmp(keyword, "surface-curve")==0){
+            else if(strcmp(keyword, "surface-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
                 sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
@@ -162,7 +162,7 @@ int main(){
                 sprintf(keyword,"void");
             }//surface_curve
 
-            else if(strcmp(keyword, "intramolecular-curve")==0){
+            else if(strcmp(keyword, "intramolecular-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
                 sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
