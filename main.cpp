@@ -334,7 +334,7 @@ int main(){
         fclose(error_file);
         exit(1);
     }
-    
+
     //First the program extracts the line numbers where the atom and bond tables begin, in addition to the number of atoms and bonds.
     i=j=0;
     while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
@@ -653,7 +653,7 @@ int main(){
             it = iterations;
             max_accept_failsafe = 1;
         }
-        
+
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         int check_chi2_threshold;

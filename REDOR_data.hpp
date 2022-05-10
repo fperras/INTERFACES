@@ -157,31 +157,25 @@ double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double
 }
 
 int find_Npoints(const char *filename){
-    //Returns the number of points in a REDOR curve file
-	char error_filename[128];
+    //Returns the number of points in a REDOR curve file by counting the non-empty lines
+	char error_filename[128], buffer[256];
 	sprintf(error_filename,"Errors.txt");
-    	FILE *error_file, *fp;
+    FILE *error_file, *fp;
 	int Npoints=0;
-	char ch = '/0', p_ch = '/n';
 
 	fp=fopen(filename,"r");
 
 	if(fp == NULL){
-        	error_file=fopen(error_filename,"a");
+        error_file=fopen(error_filename,"a");
 		fprintf(error_file, "\nERROR: could not find Npoints in file %s\n", filename);
-        	fclose(error_file);
-        	exit(1);
+        fclose(error_file);
+        exit(1);
 	}
 
-	while(!feof(fp)){
-		ch = fgetc(fp);
-		if(ch == '\n'  &&  p_ch != '\n')
-			Npoints++;
-		p_ch = ch;
+	while(fgets(buffer,256,fp)!=NULL){
+        if(strlen(buffer) > 2)
+            Npoints++;
 	}
-	
-	if (p_ch != '\n')
-        	Npoints++;
 
 	fclose(fp);
 	return Npoints;
