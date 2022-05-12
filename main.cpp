@@ -13,15 +13,22 @@ int main(){
     vector<vector<int>> REDOR_det_index, REDOR_rec_index;
     FILE *input, *mol2_file, *out, *error_file;
 
-    printf("**********************************************************\n");
-    printf("**********************************************************\n");
-    printf("***************Surface 3D Structure Solver****************\n");
-    printf("****written by James Cunningham and Frederic A. Perras****\n");
-    printf("******************Ames Laboratory, 2022*******************\n");
-    printf("**********************************************************\n");
-    printf("**********************************************************\n");
+    printf("\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
+    printf("  888   8888b   888     888     888        888   Y88b 888           d88888 d88P  Y88b 888        d88P  Y88b \n");
+    printf("  888   88888b  888     888     888        888    888 888          d88P888 888    888 888        Y88b.      \n");
+    printf("  888   888Y88b 888     888     8888888    888   d88P 8888888     d88P 888 888        8888888     ^Y888b.   \n");
+    printf("  888   888 Y88b888     888     888        8888888P^  888        d88P  888 888        888            ^Y88b. \n");
+    printf("  888   888  Y88888     888     888        888 T88b   888       d88P   888 888    888 888              ^888 \n");
+    printf("  888   888   Y8888     888     888        888  T88b  888      d8888888888 Y88b  d88P 888        Y88b  d88P \n");
+    printf("8888888 888    Y888     888     8888888888 888   T88b 888     d88P     888  ^Y8888P^  8888888888  ^Y8888P^  \n");
 
-    printf ("\nEnter the name of the input file you wish to open.\n");
+    printf("\n(Interpret NMR To Elucidate or Reconstruct the Full Atomistic Configurations of External Surfaces)\n");
+    printf("_____________________________________________________________________________________________________\n");
+    printf("\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
+    printf("\nWritten by James Cunningham and Frederic A. Perras\n");
+    printf("US DOE, Ames Laboratory, 2022\n");
+
+    printf ("\nPlease enter the name of the INTERFACES input file:\n");
     scanf ("%s", &input_filename);
 
     //Opening the error file to print out any issues that come up
