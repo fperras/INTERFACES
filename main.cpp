@@ -28,7 +28,7 @@ int main(){
     printf("\nWritten by James Cunningham and Frederic A. Perras\n");
     printf("US DOE, Ames Laboratory, 2022\n");
 
-    printf ("\nPlease enter the name of the INTERFACES input file:\n");
+    printf ("\nPlease enter the name of your INTERFACES input file:\n");
     scanf ("%s", &input_filename);
 
     //Opening the error file to print out any issues that come up
