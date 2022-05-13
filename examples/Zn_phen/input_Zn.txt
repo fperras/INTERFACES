@@ -10,7 +10,7 @@ bond  8  21 36
 
 //Constraints
 collision_distance 1.3
-distance_constraint 1 6  5.2 6.0
+cutoff_rmsd 4.0
 dihedral_constraint 1 2 21 15 -180 0
 
 //REDOR data
