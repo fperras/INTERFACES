@@ -764,19 +764,21 @@ int main(){
         }}
     }
 
+    //Next we will write the structure overlay files
+    char overlay_filename[128];
+    sprintf(overlay_filename, "%s_overlay.mol2", filename_base);
+
     if(acceptable_structures <= 1){
         error_file=fopen(error_filename,"a");
         fprintf(error_file, "\nERROR: Only one acceptable structure found within the given constraints\n");
         fclose(error_file);
+        sprintf(overlay_filename, "%s_struct1.mol2", filename_base,i);
+        remove(overlay_filename);
         exit(1);
     }
 
     printf("\nFound a total of %d acceptable structures,\n%d of which were within the requested RMSD from the best one\n", acceptable_structures+other_structures, acceptable_structures);
     fclose(mol2_file);
-
-    //Next we will write the structure overlay files
-    char overlay_filename[128];
-    sprintf(overlay_filename, "%s_overlay.mol2", filename_base);
 
     //if there are too many structures, erase the structures and exit the program
     if(max_accept_failsafe == 1){
