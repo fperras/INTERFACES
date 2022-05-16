@@ -1,0 +1,26 @@
+//information on the structure
+structure ZrOtBu.mol2
+support 29SiO2
+confidence_level 95
+
+//structural variables
+z_distance -4 1 51	
+rotate_y  18
+rotate_x  18
+
+//constraints
+collision_distance 1.4
+surface_distance_constraint 1 1.4 1.8
+surface_distance_constraint 6 5.0 9.0
+
+//REDOR data
+surface-REDOR methyls.txt 1.0
+detected_spins 9 10 11 12 13 14 15 16 18
+
+surface-REDOR quaternaries.txt 1.0
+detected_spins 6 7 8
+
+order_parameter 1 0.7
+
+
+
