@@ -14,7 +14,7 @@ struct Constraint{
     int atom4;
     double minimum;
     double maximum;
-    int type; //0 for distance, 1 for angle, 2 for dihedral
+    int type; //0 for distance, 1 for angle, 2 for dihedral, 3 for surface_distance
 };
 
 double distance_calc(double *atom1, double *atom2){

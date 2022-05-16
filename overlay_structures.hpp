@@ -40,7 +40,7 @@ double overlay_structures(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
     double xyz_temp[N_atoms][3];
     double RMSDm, RMSDp, RMSDo;
     int i,check_x=1, check_y=1, check_z=1, count=0;
-    double RMSD_start, RMSD_end, RMSD_threshold=0.001;
+    double RMSD_start, RMSD_end, RMSD_threshold=0.0001;
 
     //The function is a nested do-while loop wherein the structure is translated along x, then y, and then rotated along z, in that order.
     //When a minimum is found in a given dimension it moves to the next dimension
@@ -119,3 +119,5 @@ double overlay_structures(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
 
     return RMSD_end;
 }
+
+

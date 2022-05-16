@@ -96,24 +96,27 @@ int main(){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
         }
-        else if(strcmp(keyword, "distance_constraint")==0 || strcmp(keyword, "angle_constraint")==0 || strcmp(keyword, "dihedral_constraint")==0){
+        else if(strcmp(keyword, "distance_constraint")==0 || strcmp(keyword, "angle_constraint")==0 || strcmp(keyword, "dihedral_constraint")==0 || strcmp(keyword, "surface_distance_constraint")==0){
             N_constraints++;
             sprintf(keyword,"void");
         }
     }
     fclose(input);
-    i=j=0;
 
     //Knowing the quantity of these variables the arrays to contain their values are created and the file is read a second time to extract the values.
     struct Bond bond[N_rotatable_bonds];
     struct Constraint constraint[N_constraints];
     int bond_index=0, Nconst=0, Nspins[N_curves], curve_type[N_curves], Nrecspins[N_curves];
     char curve_filename[N_curves][120];
-    double scaling_factor[N_curves];
-    N_curves = 0;
-
+    double scaling_factor[N_curves], order_parameter[N_curves];
     input=fopen(input_filename,"r");
 
+    for(i=0;i<N_curves;i++){
+        order_parameter[i]=1.;
+    }
+
+    int counter=0;
+    i=j=0;
     while(fgets(buffer, sizeof(buffer), input) != NULL){
         sscanf(buffer," %s",&keyword);
             if(strcmp(keyword, "bond")==0){
@@ -126,17 +129,17 @@ int main(){
             else if(strcmp(keyword, "surface-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
-                curve_type[N_curves]=0;
+                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[counter], &scaling_factor[counter]);
+                curve_type[counter]=0;
 
-                if((scaling_factor[N_curves]>1.)||(scaling_factor[N_curves]<=0.)){
+                if((scaling_factor[counter]>1.)||(scaling_factor[counter]<=0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[N_curves],curve_filename[N_curves]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
                     fclose(error_file);
-                    scaling_factor[N_curves]=1.0;
+                    scaling_factor[counter]=1.0;
                 }
 
-                N_curves++;
+                counter++;
                 j=0;
 
                 fgets(buffer, sizeof(buffer), input);
@@ -161,7 +164,7 @@ int main(){
                 }
                 else{
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                    fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
                     fclose(error_file);
                     exit(1);
                 }
@@ -172,17 +175,17 @@ int main(){
             else if(strcmp(keyword, "intramolecular-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[N_curves], &scaling_factor[N_curves]);
-                curve_type[N_curves]=1;
+                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[counter], &scaling_factor[counter]);
+                curve_type[counter]=1;
 
-                if((scaling_factor[N_curves]>1.)||(scaling_factor[N_curves]<0.)){
+                if((scaling_factor[counter]>1.)||(scaling_factor[counter]<0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[N_curves],curve_filename[N_curves]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
                     fclose(error_file);
-                    scaling_factor[N_curves]=1.0;
+                    scaling_factor[counter]=1.0;
                 }
 
-                N_curves++;
+                counter++;
                 j=0;
 
                     fgets(buffer, sizeof(buffer), input);
@@ -220,10 +223,16 @@ int main(){
                             j++;
                         }
                         Nrecspins[i]=j;
+                        if(Nrecspins[i]>1){
+                           error_file=fopen(error_filename,"a");
+                           fprintf(error_file, "\nWARNING: calculated curve for %s might be inacurate at longer recoupling times, using root-sum-square dipole over recoupled spins.\n", curve_filename[counter]);
+                           fclose(error_file);
+                        }
+
                     }
                        else{
                            error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
                            fclose(error_file);
                            exit(1);
                         }
@@ -265,7 +274,7 @@ int main(){
                     }
                        else{
                            error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
                            fclose(error_file);
                            exit(1);
                         }
@@ -273,7 +282,7 @@ int main(){
 
                     else{
                         error_file=fopen(error_filename,"a");
-                        fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[N_curves]);
+                        fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
                         fclose(error_file);
                         exit(1);
                     }
@@ -326,6 +335,43 @@ int main(){
                 }
 
                 Nconst++;
+                sprintf(keyword,"void");
+            }
+
+            else if(strcmp(keyword, "surface_distance_constraint")==0){
+                sscanf(buffer,"%s %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
+                constraint[Nconst].atom1--;
+                constraint[Nconst].type=3;
+
+                if(constraint[Nconst].minimum>constraint[Nconst].maximum){
+                    double value=constraint[Nconst].minimum;
+                    constraint[Nconst].minimum=constraint[Nconst].maximum;
+                    constraint[Nconst].minimum=value;
+                }
+
+                Nconst++;
+                sprintf(keyword,"void");
+            }
+
+            else if(strcmp(keyword, "order_parameter")==0){
+                int index;
+                double S;
+                sscanf(buffer,"%s %d %lf",&keyword,&index, &S);
+
+                if(index>N_curves){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Order parameter given for an inexistent REDOR curve\n");
+                    fclose(error_file);
+                }
+                else if(S>1.0 || S<=0.0){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Illegal order parameter for curve %d; must be between 0 and 1.\n",index);
+                    fclose(error_file);
+                    exit(1);
+                }
+                else{
+                    order_parameter[index-1]=S;
+                }
                 sprintf(keyword,"void");
             }
         }//end while
@@ -409,7 +455,7 @@ int main(){
     vector<vector<vector<double>>> X2;
     X2.resize(N_curves, vector<vector<double>>(200,vector<double>(101,0.)));
     for(i=0; i<N_curves; i++){
-        create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i], Nspins[i], curve_type[i]);
+        create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
     }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
@@ -536,6 +582,10 @@ int main(){
                 case 2: //dihedral
                     value = dihedral_calc(xyz_priv[constraint[ii].atom1],xyz_priv[constraint[ii].atom2],xyz_priv[constraint[ii].atom3],xyz_priv[constraint[ii].atom4]);
                     break;
+                case 3: //surface distance
+                    value=xyz_priv[constraint[ii].atom1][2];
+                    break;
+
             }//end switch
 
             if(value > constraint[ii].maximum){
@@ -708,6 +758,9 @@ int main(){
                 case 2: //dihedral
                     value = dihedral_calc(xyz_priv[constraint[ii].atom1],xyz_priv[constraint[ii].atom2],xyz_priv[constraint[ii].atom3],xyz_priv[constraint[ii].atom4]);
                     break;
+                case 3: //surface distance
+                    value=xyz_priv[constraint[ii].atom1][2];
+                    break;
             }//end switch
 
             if(value > constraint[ii].maximum){
@@ -807,5 +860,5 @@ int main(){
     compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
-    write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor, Nspins, curve_type);
+    write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
 }//end int main

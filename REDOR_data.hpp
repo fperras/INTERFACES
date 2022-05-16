@@ -123,7 +123,7 @@ int load_simulations(const char *support_name, const char *element, vector< vect
 	return 0;
 }
 
-double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, vector< vector<double> > &DSS0_lib, double scaling_factor, int Nspins){
+double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, vector< vector<double> > &DSS0_lib, double scaling_factor, double order_parameter, int Nspins){
 	//This function is used to calculate the REDOR dephasing given a gaussian distribution of distances with d_mean and d_std
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
 	//and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
@@ -131,7 +131,7 @@ double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double
 	int i, time_index, d_index;
 	double DSS0 = 0., distance;
 
-	time_index = round(time/0.0002 - 1.);
+	time_index = round((time/0.0002)*order_parameter - 1.);
 	time_index = (time_index>249)*249 + (time_index<=249)*time_index;
 	time_index = (time_index>-1)*time_index;
 
@@ -437,32 +437,32 @@ double RDD(double RDD_1A, double distance){
     return RDD_1A*pow(distance,-3.0);
 }
 
-double REDOR_DSS0(double RDD,double time,int spin, vector< vector<double> > &REDORs){
+double REDOR_DSS0(double RDD,double time, double order_parameter, int spin, vector< vector<double> > &REDORs){
    // int time_index = round(RDD*time/0.1 - 1.); //compensates for different RDD than used in the library
-    int time_index = round(1000*time*RDD - 1.);
+    int time_index = round(1000*time*RDD*order_parameter - 1.);
     time_index = (time_index>9999)*9999 + (time_index<=9999)*time_index;
     time_index = (time_index>-1)*time_index;
     return REDORs[time_index][spin-1];
 }
 
-double REDOR_pred(double time, double d_mean, double d_std, double RDD1A, vector< vector<double> > &gaussians, vector< vector<double> > &REDORs, double scaling_factor, int Nspins, int spin){
+double REDOR_pred(double time, double d_mean, double d_std, double RDD1A, vector< vector<double> > &gaussians, vector< vector<double> > &REDORs, double scaling_factor, double order_parameter, int Nspins, int spin){
 	//This function is used to calculate the REDOR dephasing given a gaussian distribution of distances with d_mean and d_std
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
 	//and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
-	int i, time_index, d_index;
+	int i;
 	double DSS0 = 0., distance;
 
 	if(Nspins==2){
         distance=d_mean-d_std*d_std;
-        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(RDD1A,distance),time,spin,REDORs);
+        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(RDD1A,distance),time,order_parameter,spin,REDORs);
         distance=d_mean+d_std*d_std;
-        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(RDD1A,distance),time,spin,REDORs);
+        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(RDD1A,distance),time,order_parameter,spin,REDORs);
 	}
 
 	else{
         for(i=0;i<200;i++){
             distance=0.1+i*0.1;
-            DSS0= DSS0 + d_prob(distance, d_mean, d_std, gaussians)*REDOR_DSS0(RDD(RDD1A,distance),time,spin,REDORs);
+            DSS0= DSS0 + d_prob(distance, d_mean, d_std, gaussians)*REDOR_DSS0(RDD(RDD1A,distance),time,order_parameter,spin,REDORs);
         }
 	}
 	return DSS0*scaling_factor;
@@ -470,7 +470,7 @@ double REDOR_pred(double time, double d_mean, double d_std, double RDD1A, vector
 
 
 
-int create_X2_table(const char *filename, const char *support_name, const char *element, const char *rec_element, vector< vector<double> > &X2, double scaling_factor, int Nspins, int curve_type){
+int create_X2_table(const char *filename, const char *support_name, const char *element, const char *rec_element, vector< vector<double> > &X2, double scaling_factor, double order_parameter, int Nspins, int curve_type){
 	//This function is used to create the Chi^2 table for a single curve
 	//X2 is ordered as X2[d_index][std_index]
 	//X2 has dimensions of X2[200][101]
@@ -508,7 +508,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
                 int std_index=0, ii;
 
                 for(ii=0;ii<Npoints;ii++){
-                    DSS0_calc = DSS0_pred(tmix[ii], d_mean, d_std, gaussians, DSS0_lib,scaling_factor, Nspins);
+                    DSS0_calc = DSS0_pred(tmix[ii], d_mean, d_std, gaussians, DSS0_lib,scaling_factor,order_parameter, Nspins);
                     X2[d_index][std_index]=X2[d_index][std_index] + pow((DSS0[ii]-DSS0_calc),2.) / pow((DSS0[ii]),2.);
                 }
             }
@@ -525,7 +525,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
                     double d_std=0.1*std_index;
 
                     for(ii=0;ii<Npoints;ii++){
-                        DSS0_calc = DSS0_pred(tmix[ii], d_mean, d_std, gaussians, DSS0_lib,scaling_factor,Nspins);
+                        DSS0_calc = DSS0_pred(tmix[ii], d_mean, d_std, gaussians, DSS0_lib,scaling_factor,order_parameter,Nspins);
                         X2[d_index][std_index]=X2[d_index][std_index] + pow((DSS0[ii]-DSS0_calc),2.) / pow((DSS0[ii]),2.);
                     }
                 }
@@ -549,7 +549,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
                 int std_index=0, ii;
 
                 for(ii=0;ii<Npoints;ii++){
-                    DSS0_calc = REDOR_pred(tmix[ii], d_mean, d_std, RDD1A, gaussians, REDORs,scaling_factor, Nspins, S);
+                    DSS0_calc = REDOR_pred(tmix[ii], d_mean, d_std, RDD1A, gaussians, REDORs,scaling_factor,order_parameter, Nspins, S);
                     X2[d_index][std_index]=X2[d_index][std_index] + pow((DSS0[ii]-DSS0_calc),2.) / pow((DSS0[ii]),2.);
                 }
             }
@@ -566,7 +566,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
                     double d_std=0.1*std_index;
 
                     for(ii=0;ii<Npoints;ii++){
-                        DSS0_calc = REDOR_pred(tmix[ii], d_mean, d_std, RDD1A, gaussians, REDORs,scaling_factor, Nspins, S);
+                        DSS0_calc = REDOR_pred(tmix[ii], d_mean, d_std, RDD1A, gaussians, REDORs,scaling_factor,order_parameter, Nspins, S);
                         X2[d_index][std_index]=X2[d_index][std_index] + pow((DSS0[ii]-DSS0_calc),2.) / pow((DSS0[ii]),2.);
                     }
                 }
@@ -576,7 +576,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
 	return 0;
 }
 
-int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int>> &REDOR_det_index, vector<vector<int>> &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, int *Nspins, int *curve_type){
+int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int>> &REDOR_det_index, vector<vector<int>> &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, double *order_parameter, int *Nspins, int *curve_type){
     //This function writes out the REDOR curves form the best-fit structure as well as the range of dephasing for each curve
     //Data is stored in a CSV file
     //In the arrays listing the best-fin, minimum, and maximum distances and STDEV the indices have the following meaning:
@@ -633,21 +633,21 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
 
         for(j=0;j<N_curves;j++){
             if(curve_type[j]==0){//surface curves
-                DSS0 = DSS0_pred(time,distances[j][0]/10., stdevs[j][0]/10., gaussians, DSS0_lib[j],scaling_factor[j], Nspins[j]);
+                DSS0 = DSS0_pred(time,distances[j][0]/10., stdevs[j][0]/10., gaussians, DSS0_lib[j],scaling_factor[j],order_parameter[j], Nspins[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time, distances[j][1]/10., stdevs[j][1]/10., gaussians, DSS0_lib[j],scaling_factor[j], Nspins[j]);
+                DSS0 = DSS0_pred(time, distances[j][1]/10., stdevs[j][1]/10., gaussians, DSS0_lib[j],scaling_factor[j],order_parameter[j], Nspins[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time, distances[j][2]/10., stdevs[j][2]/10., gaussians, DSS0_lib[j],scaling_factor[j], Nspins[j]);
+                DSS0 = DSS0_pred(time, distances[j][2]/10., stdevs[j][2]/10., gaussians, DSS0_lib[j],scaling_factor[j],order_parameter[j], Nspins[j]);
                 fprintf(out,"%lf,,",DSS0);
             }
             else{
                 double RDD1A=RDD_1A(element[REDOR_det_index[j][0]],element[REDOR_rec_index[j][0]]);
                 int S=spin(element[REDOR_rec_index[j][0]]);
-                DSS0 = REDOR_pred(time, distances[j][0]/10., stdevs[j][0]/10.,RDD1A, gaussians, REDORs,scaling_factor[j], Nspins[j],S);
+                DSS0 = REDOR_pred(time, distances[j][0]/10., stdevs[j][0]/10.,RDD1A, gaussians, REDORs,scaling_factor[j],order_parameter[j], Nspins[j],S);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time, distances[j][1]/10., stdevs[j][1]/10., RDD1A, gaussians, REDORs,scaling_factor[j], Nspins[j],S);
+                DSS0 = REDOR_pred(time, distances[j][1]/10., stdevs[j][1]/10., RDD1A, gaussians, REDORs,scaling_factor[j],order_parameter[j], Nspins[j],S);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time, distances[j][2]/10., stdevs[j][2]/10., RDD1A, gaussians, REDORs,scaling_factor[j], Nspins[j],S);
+                DSS0 = REDOR_pred(time, distances[j][2]/10., stdevs[j][2]/10., RDD1A, gaussians, REDORs,scaling_factor[j],order_parameter[j], Nspins[j],S);
                 fprintf(out,"%lf,,",DSS0);
             }
         }
