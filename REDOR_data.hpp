@@ -622,7 +622,7 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
     }
     fprintf(out,"\ntime (s),,");
     for(i=0;i<N_curves;i++){
-        fprintf(out,"best-fit,min,max,,");
+        fprintf(out,"best-fit,max,min,,");
     }
     fprintf(out,"\n");
 
