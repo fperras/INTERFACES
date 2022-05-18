@@ -1,0 +1,13 @@
+structure Pd-Al.mol2
+
+//Structural variables
+stretch 1 122 -2 6 81
+
+//Constraints
+confidence_level 90
+collision_distance 1.2
+cutoff_rmsd 4.0
+
+intramolecular-REDOR SREDOR.txt 1.0
+detected_spins 16 17 26 27 40 46 48 49 51 53 54 55 56 57 61 64 65 66 67 71 73 75 76 77 80 83 85 89 90 91 93 95 96 97 101 103 105 106 107 110 114 115 116 117
+recoupled_spins 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161
