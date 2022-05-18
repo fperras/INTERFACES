@@ -88,7 +88,7 @@ int collisions(double (*xyz)[3], int N_atoms, double min_Z){
             return 1;
         }
         for(j=i+1;j<N_atoms; j++){
-            if(distance_calc(xyz[i],xyz[j])<1.0)
+            if(distance_calc(xyz[i],xyz[j])<0.9)
                 return 1;
     }}
     return 0;

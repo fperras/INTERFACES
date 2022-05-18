@@ -92,7 +92,11 @@ int main(){
             N_curves++;
             sprintf(keyword,"void");
         }
-        else if(strcmp(keyword, "bond")==0){
+        else if(strcmp(keyword, "revolve")==0){
+            N_rotatable_bonds++;
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "stretch")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
         }
@@ -119,10 +123,19 @@ int main(){
     i=j=0;
     while(fgets(buffer, sizeof(buffer), input) != NULL){
         sscanf(buffer," %s",&keyword);
-            if(strcmp(keyword, "bond")==0){
+            if(strcmp(keyword, "revolve")==0){
                 sscanf(buffer, "%s %d %d %d", &keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].N_steps);
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
+                bond[bond_index].type=0;
+                bond_index++;
+                sprintf(keyword,"void");
+            }
+            if(strcmp(keyword, "stretch")==0){
+                sscanf(buffer, "%s %d %d %lf %lf %d", &keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                bond[bond_index].atom1=bond[bond_index].atom1-1;
+                bond[bond_index].atom2=bond[bond_index].atom2-1;
+                bond[bond_index].type=1;
                 bond_index++;
                 sprintf(keyword,"void");
             }
@@ -184,8 +197,6 @@ int main(){
                     fclose(error_file);
                     scaling_factor[counter]=1.0;
                 }
-
-                counter++;
                 j=0;
 
                     fgets(buffer, sizeof(buffer), input);
@@ -287,6 +298,7 @@ int main(){
                         exit(1);
                     }
                     i++;
+                    counter++;
             }//intramolecular curve
 
             else if(strcmp(keyword, "distance_constraint")==0){
@@ -459,7 +471,7 @@ int main(){
     }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
-    //the rotation about a given bond.
+    //the rotation or elongation of a given bond.
     get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
 
     k=1;
@@ -535,7 +547,7 @@ int main(){
 
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
-        double xyz_priv[N_atoms][3], nominator, angle, R[4][3];
+        double xyz_priv[N_atoms][3], nominator, angle, R[4][3], XY[2], step;
         char min_chi2_output_filename[128];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
@@ -559,11 +571,23 @@ int main(){
         rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-            angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
-            generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
-            //rotating all of atoms involved around the bond
-            for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
-                rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+            if(bond[jj].type==0){//bond rotation
+                angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
+                generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+            }
+            else{//bond elongation
+                get_XY_vector(XY,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
+                XY[0]=XY[0]*step;
+                XY[1]=XY[1]*step;
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],XY[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],XY[1]);
+                }
             }
         }
 
@@ -714,7 +738,7 @@ int main(){
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         int check_chi2_threshold;
-        double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3];
+        double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3], XY[2], step;
         char min_chi2_output_filename[128];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
@@ -735,11 +759,23 @@ int main(){
         rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-            angle=2*Pi/bond[jj].N_steps*bond_position[jj];
-            generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
-            //rotating all of atoms involved around the bond
-            for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
-                rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+            if(bond[jj].type==0){//bond rotation
+                angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
+                generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+            }
+            else{//bond elongation
+                get_XY_vector(XY,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
+                XY[0]=XY[0]*step;
+                XY[1]=XY[1]*step;
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],XY[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],XY[1]);
+                }
             }
         }
 

@@ -7,7 +7,11 @@ struct Bond{
     int N_steps;
     vector<int> affected_atom;
     int mod;
+    int type; //0=rotatable 1=elongatable
+    double dmin;
+    double dmax;
 };
+
 
 void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *ori_atom_id, int *tar_atom_id){
     //This function is used to find all the atoms that are affected by the rotation of a particular bond
@@ -57,8 +61,13 @@ void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *or
         }
     }while(found==0);
     }
-
 }
 
-
+void get_XY_vector(double *XY, double *atom1, double *atom2){
+    XY[0]=atom2[0]-atom1[0];
+    XY[1]=atom2[1]-atom1[1];
+    double len=sqrt(XY[0]*XY[0]+XY[1]*XY[1]);
+    XY[0]=XY[0]/len;
+    XY[1]=XY[1]/len;
+}
 
