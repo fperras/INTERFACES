@@ -63,11 +63,13 @@ void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *or
     }
 }
 
-void get_XY_vector(double *XY, double *atom1, double *atom2){
-    XY[0]=atom2[0]-atom1[0];
-    XY[1]=atom2[1]-atom1[1];
-    double len=sqrt(XY[0]*XY[0]+XY[1]*XY[1]);
-    XY[0]=XY[0]/len;
-    XY[1]=XY[1]/len;
+void get_internuclear_vector(double *bondvector, double *atom1, double *atom2){
+    bondvector[0]=atom2[0]-atom1[0];
+    bondvector[1]=atom2[1]-atom1[1];
+    bondvector[2]=atom2[2]-atom1[2];
+    double len=sqrt(bondvector[0]*bondvector[0]+bondvector[1]*bondvector[1]+bondvector[2]*bondvector[2]);
+    bondvector[0]=bondvector[0]/len;
+    bondvector[1]=bondvector[1]/len;
+    bondvector[2]=bondvector[2]/len;
 }
 

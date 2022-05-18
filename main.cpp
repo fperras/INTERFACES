@@ -547,7 +547,7 @@ int main(){
 
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
-        double xyz_priv[N_atoms][3], nominator, angle, R[4][3], XY[2], step;
+        double xyz_priv[N_atoms][3], nominator, angle, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
@@ -580,13 +580,15 @@ int main(){
                 }
             }
             else{//bond elongation
-                get_XY_vector(XY,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
                 step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
-                XY[0]=XY[0]*step;
-                XY[1]=XY[1]*step;
+                bondvector[0]=bondvector[0]*step;
+                bondvector[1]=bondvector[1]*step;
+                bondvector[2]=bondvector[2]*step;
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
-                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],XY[0]);
-                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],XY[1]);
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
                 }
             }
         }
@@ -738,7 +740,7 @@ int main(){
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         int check_chi2_threshold;
-        double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3], XY[2], step;
+        double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
@@ -768,13 +770,15 @@ int main(){
                 }
             }
             else{//bond elongation
-                get_XY_vector(XY,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
                 step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
-                XY[0]=XY[0]*step;
-                XY[1]=XY[1]*step;
+                bondvector[0]=bondvector[0]*step;
+                bondvector[1]=bondvector[1]*step;
+                bondvector[2]=bondvector[2]*step;
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
-                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],XY[0]);
-                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],XY[1]);
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
                 }
             }
         }
