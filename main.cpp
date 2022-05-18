@@ -861,7 +861,7 @@ int main(){
     char overlay_filename[128];
     sprintf(overlay_filename, "%s_overlay.mol2", filename_base);
 
-    if(acceptable_structures <= 1){
+    if((acceptable_structures+other_structures) <= 1){
         error_file=fopen(error_filename,"a");
         fprintf(error_file, "\nERROR: Only one acceptable structure found within the given constraints\n");
         fclose(error_file);
