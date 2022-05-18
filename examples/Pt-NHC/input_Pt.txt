@@ -1,10 +1,11 @@
 structure Pt-NHC.mol2
 
 //Structural variables
-bond  23  18  36
-bond  22   3  36
-bond   3   4  36
-bond   4   5  36
+revolve  23  18  36
+revolve  22   3  36
+revolve   3   4  36
+revolve   4   5  36
+stretch 22 23 -1 2 4
 
 //Constraints
 confidence_level 90
