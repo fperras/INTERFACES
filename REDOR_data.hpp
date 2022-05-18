@@ -215,7 +215,7 @@ int load_exp_curve(const char *filename, vector<double> &DSS0, vector<double> &t
 		}
 		else if(DSS0[i]<0.05){
             error_file=fopen(error_filename,"a");
-            fprintf(error_file, "\nWARNING: Very low dephasing value of %lf in %s can lead to over fitting\n You may obtain a better fit by eliminating this data point.\n",DSS0[i], filename);
+            fprintf(error_file, "\nWARNING: Very low dephasing value of %lf in %s can lead to over fitting\nYou may obtain a better fit by eliminating this data point.\n",DSS0[i], filename);
             fclose(error_file);
 		}
 	}
