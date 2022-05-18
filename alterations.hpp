@@ -184,5 +184,21 @@ void copy_structure(int N_atoms, double (*xyz)[3], double (*xyz_copy)[3]){
     }
 }
 
+void generate_bond_angle_rot_matrix(double(*R)[3], double *atom1, double *atom2, double *atom3, double angle){
+    //Creates a rotation matrix with an axis perpendicular to a bond angle, centered on the central atom.
+    double bond1[3], bond2[3], cross[3];
 
+    bond1[0]=atom2[0]-atom1[0];
+    bond1[1]=atom2[1]-atom1[1];
+    bond1[2]=atom2[2]-atom1[2];
 
+    bond2[0]=atom3[0]-atom2[0];
+    bond2[1]=atom3[1]-atom2[1];
+    bond2[2]=atom3[2]-atom2[2];
+
+    cross[0]=bond1[1]*bond2[2]-bond1[2]*bond2[1] + atom2[0];
+    cross[1]=bond1[2]*bond2[0]-bond1[0]*bond2[2] + atom2[1];
+    cross[2]=bond1[0]*bond2[1]-bond1[1]*bond2[0] + atom2[2];
+
+    generate_bond_rot_matrix(R,atom2,cross,angle);
+}

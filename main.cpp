@@ -100,6 +100,10 @@ int main(){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
         }
+        else if(strcmp(keyword, "bend")==0){
+            N_rotatable_bonds++;
+            sprintf(keyword,"void");
+        }
         else if(strcmp(keyword, "distance_constraint")==0 || strcmp(keyword, "angle_constraint")==0 || strcmp(keyword, "dihedral_constraint")==0 || strcmp(keyword, "surface_distance_constraint")==0){
             N_constraints++;
             sprintf(keyword,"void");
@@ -131,11 +135,20 @@ int main(){
                 bond_index++;
                 sprintf(keyword,"void");
             }
-            if(strcmp(keyword, "stretch")==0){
+            else if(strcmp(keyword, "stretch")==0){
                 sscanf(buffer, "%s %d %d %lf %lf %d", &keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
                 bond[bond_index].type=1;
+                bond_index++;
+                sprintf(keyword,"void");
+            }
+            else if(strcmp(keyword, "bend")==0){
+                sscanf(buffer, "%s %d %d %d %lf %lf %d", &keyword, &bond[bond_index].atom0, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                bond[bond_index].atom0=bond[bond_index].atom0-1;
+                bond[bond_index].atom1=bond[bond_index].atom1-1;
+                bond[bond_index].atom2=bond[bond_index].atom2-1;
+                bond[bond_index].type=2;
                 bond_index++;
                 sprintf(keyword,"void");
             }
@@ -579,9 +592,9 @@ int main(){
                     rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
                 }
             }
-            else{//bond elongation
+            else if(bond[jj].type==1){//bond elongation
                 get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
-                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
                 bondvector[0]=bondvector[0]*step;
                 bondvector[1]=bondvector[1]*step;
                 bondvector[2]=bondvector[2]*step;
@@ -589,6 +602,14 @@ int main(){
                     translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
                     translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
                     translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                }
+            }
+            else{//bond angle
+                angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
                 }
             }
         }
@@ -769,9 +790,9 @@ int main(){
                     rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
                 }
             }
-            else{//bond elongation
+            else if(bond[jj].type==1){//bond elongation
                 get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
-                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/bond[jj].N_steps + bond[jj].dmin;
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
                 bondvector[0]=bondvector[0]*step;
                 bondvector[1]=bondvector[1]*step;
                 bondvector[2]=bondvector[2]*step;
@@ -779,6 +800,14 @@ int main(){
                     translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
                     translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
                     translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                }
+            }
+            else{//bond angle
+                angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
                 }
             }
         }

@@ -3,11 +3,12 @@
 struct Bond{
     int atom1;
     int atom2;
+    int atom0;
     int N_aff_atoms;
     int N_steps;
     vector<int> affected_atom;
     int mod;
-    int type; //0=rotatable 1=elongatable
+    int type; //0=revolve 1=stretch 2=bend
     double dmin;
     double dmax;
 };
