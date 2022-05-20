@@ -14,6 +14,9 @@ revolve  3  6 4
 revolve 11 14 4
 revolve 12 15 4
 
+//Constraints
+surface_collision_distance 2.0
+
 //REDOR data
 surface-REDOR SiO2-methyls.txt 1.0
 detected_spins 7 8 9 10 16 17 18 19
