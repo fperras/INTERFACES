@@ -1,0 +1,29 @@
+//information on the structure
+structure Sc_amidine_SiO.mol2
+support 29SiO2
+confidence_level 90
+cutoff_rmsd 1.5
+
+//Structural variables
+bend 20 21 1 -40 40 9
+revolve 21 1 9
+	
+revolve  1 13 4
+revolve  2  5 4
+revolve  3  6 4
+revolve 11 14 4
+revolve 12 15 4
+
+//Constraints
+surface_collision_distance 1.2
+
+//REDOR data
+surface-REDOR SiO2-methyls.txt 1.0
+detected_spins 7 8 9 10 16 17 18 19
+
+surface-REDOR SiO2-iPr.txt 1.0
+detected_spins 5 6 14 15
+
+surface-REDOR SiO2-CH.txt 1.0
+detected_spins 4 13
+
