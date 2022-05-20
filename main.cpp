@@ -9,7 +9,7 @@ int main(){
     int I, i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
-    double collision_distance = 1.5;
+    double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
     vector<vector<int>> REDOR_det_index, REDOR_rec_index;
     FILE *input, *mol2_file, *out, *error_file;
 
@@ -55,8 +55,12 @@ int main(){
             sscanf(buffer,"%s %s",&keyword,&support);
             sprintf(keyword,"void");
         }
-        else if(strcmp(keyword, "collision_distance")==0){
-            sscanf(buffer,"%s %lf",&keyword,&collision_distance);
+        else if(strcmp(keyword, "surface_collision_distance")==0){
+            sscanf(buffer,"%s %lf",&keyword,&surface_collision_distance);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "interatomic_collision_distance")==0){
+            sscanf(buffer,"%s %lf",&keyword,&interatomic_collision_distance);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "z_distance")==0){
@@ -442,6 +446,11 @@ int main(){
     //bond variables
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
     char bond_type[N_bonds][20];
+    vector< vector<int> > neighbors;
+    neighbors.resize(N_atoms, vector<int> (1,0));
+    for(i=0;i<N_atoms;i++){
+        neighbors[i][0]=i;
+    }
 
     //The mol2 file is opened for a second time to extract the coordinates and bond connections.
     k=1;
@@ -460,6 +469,8 @@ int main(){
             for(i=0; i<N_bonds; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
                 sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                neighbors[ori_atom_id[i]-1].push_back(tar_atom_id[i]-1);
+                neighbors[tar_atom_id[i]-1].push_back(ori_atom_id[i]-1);
                 k++;
             }}
         else{
@@ -649,7 +660,7 @@ int main(){
         //one atom falls at a distance below collision_distance from the surface.  A distance of exactly
         //zero is ignored as this is assumed to be a surface atom.
         if(check_constraints == 0){
-        if(!collisions(xyz_priv, N_atoms, collision_distance)){
+        if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
             //Here we loop over the different curves to calculate the distance and STD index of that structure
             //in the Chi^2 table
             for(kk=0; kk<N_curves; kk++){
@@ -843,7 +854,7 @@ int main(){
         }
 
         if(check_constraints == 0){
-        if(!collisions(xyz_priv, N_atoms, collision_distance)){
+        if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
             check_chi2_threshold = 0;
             for(kk=0; kk<N_curves; kk++){
                 d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);

@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <vector>
+#include <time.h>
 static double Pi = 3.1415926535897932384626433;
 using namespace std;
 
@@ -16,6 +17,15 @@ struct Constraint{
     double maximum;
     int type; //0 for distance, 1 for angle, 2 for dihedral, 3 for surface_distance
 };
+
+double distance_sq(double *atom1, double *atom2){
+    //function that returns the squared distance.
+    //In enables the calculation of collisions without having to call a sqrt
+    double x=(atom1[0]-atom2[0]);
+    double y=(atom1[1]-atom2[1]);
+    double z=(atom1[2]-atom2[2]);
+    return x*x+y*y+z*z;
+}
 
 double distance_calc(double *atom1, double *atom2){
     //returns the distance between two atoms
@@ -77,22 +87,38 @@ double dihedral_calc(double *atom1, double *atom2, double *atom3, double *atom4)
     return ((triple<0.) - (triple>=0.))*dihedral;
 }
 
-int collisions(double (*xyz)[3], int N_atoms, double min_Z){
+int are_bonded(vector< vector<int> > neighbors, int atom1, int atom2){
+    int i;
+    for(i=0; i<neighbors[atom1].size(); i++){
+        if(neighbors[atom1][i] == atom2)
+            return 1;
+    }
+    return 0;
+}
+
+int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, double surface_collision_distance, double interatomic_collision_distance){
     //This function returns true if there is either an interatomic (< 1A) or surface-atom collision.
     //A surface-atom distance of exactly zero is ignored as it is assumed to be a surface atom.
     int i,j;
+    clock_t start, end;
+    double int_dist_sq=interatomic_collision_distance*interatomic_collision_distance;
 
     for(i=0;i<N_atoms;i++){
-        if(xyz[i][2]<min_Z){
+        if(xyz[i][2]<surface_collision_distance){
             if(xyz[i][2]!=0.0)
             return 1;
         }
         for(j=i+1;j<N_atoms; j++){
-            if(distance_calc(xyz[i],xyz[j])<0.9)
-                return 1;
+            if(xyz[i][0]-xyz[j][0]>interatomic_collision_distance)
+                j++;
+            else if(xyz[i][1]-xyz[j][1]>interatomic_collision_distance)
+                j++;
+            else if(xyz[i][2]-xyz[j][2]>interatomic_collision_distance)
+                j++;
+            else if(distance_sq(xyz[i],xyz[j]) < int_dist_sq){
+                if(!are_bonded(neighbors,i,j))
+                    return 1;
+            }
     }}
     return 0;
 }
-
-
-
