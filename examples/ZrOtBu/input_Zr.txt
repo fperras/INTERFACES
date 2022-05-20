@@ -9,7 +9,7 @@ rotate_y  18
 rotate_x  18
 
 //constraints
-collision_distance 1.4
+surface_collision_distance 1.4
 surface_distance_constraint 1 1.4 1.8
 surface_distance_constraint 6 5.0 9.0
 
