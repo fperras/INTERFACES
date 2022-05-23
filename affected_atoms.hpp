@@ -13,6 +13,41 @@ struct Bond{
     double dmax;
 };
 
+void get_affected_atoms(int N_rotatable_bonds, struct Bond *bond, vector< vector<int> > neighbors){
+    //Same function of get_aff_atoms() but uses neighbors and should be faster.
+
+    int found,start,check=0,i,j,k,l;
+
+    for(i=0;i<N_rotatable_bonds;i++){
+        bond[i].N_aff_atoms=1;
+        bond[i].affected_atom.resize(bond[i].N_aff_atoms);
+        bond[i].affected_atom[0]=bond[i].atom2;
+    }
+
+    for(k=0;k<N_rotatable_bonds;k++){
+        start=0;
+        do{
+            found=1;
+            for(i=start;i<bond[k].N_aff_atoms;i++){
+                for(j=1;j<neighbors[bond[k].affected_atom[i]].size();j++){
+                    for(l=0;l<bond[k].affected_atom.size();l++){
+                        check=0;
+                        if(neighbors[bond[k].affected_atom[i]][j]==bond[k].affected_atom[l]){
+                            check=1;
+                            break;
+                        }
+                    }//loop over current affected atoms to check
+                    if(check==0){
+                        bond[k].affected_atom.push_back(neighbors[bond[k].affected_atom[i]][j]);
+                        found=1;
+                        bond[k].N_aff_atoms++;
+                        start++;
+                    }
+                }//loop over neighbors of affected atom
+            }//loop over last shell of affected_atoms
+        }while(found==0);
+    }//looping over rotatable bonds
+}
 
 void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *ori_atom_id, int *tar_atom_id){
     //This function is used to find all the atoms that are affected by the rotation of a particular bond

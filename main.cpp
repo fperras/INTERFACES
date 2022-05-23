@@ -496,7 +496,8 @@ int main(){
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
-    get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
+   // get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
+   get_affected_atoms(N_rotatable_bonds,bond,neighbors);
 
     k=1;
     int mol2_filename_len=strlen(mol2_filename)-5;
