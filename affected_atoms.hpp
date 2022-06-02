@@ -36,6 +36,10 @@ void get_affected_atoms(int N_rotatable_bonds, struct Bond *bond, vector< vector
                             check=1;
                             break;
                         }
+                        else if(neighbors[bond[k].affected_atom[i]][j]==bond[k].atom1){
+                            check=1;
+                            break;
+                        }
                     }//loop over current affected atoms to check
                     if(check==0){
                         bond[k].affected_atom.push_back(neighbors[bond[k].affected_atom[i]][j]);
