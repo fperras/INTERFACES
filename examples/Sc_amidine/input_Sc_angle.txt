@@ -7,7 +7,8 @@ cutoff_rmsd 1.5
 //Structural variables
 bend 20 21 1 -40 40 9
 revolve 21 1 9
-	
+
+revolve  1 4  4	
 revolve  1 13 4
 revolve  2  5 4
 revolve  3  6 4
