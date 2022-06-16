@@ -1,7 +1,7 @@
 void generate_REDORs(vector< vector<double> > &REDORs){
     //This function generates a REDOR/RESPDOR library of curves assuming a 100 Hz RDD
-    //in time increments of 100us up to 100ms
-    //data are organized as REDORs[(time-100us)/100us][spin*2]=DS/S0
+    //in time increments of 10us up to 100ms
+    //data are organized as REDORs[(time-10us)/10us][spin*2]=DS/S0
     //dimensions are fixed at REDORs[1000][9]
 REDORs[0][0] = 0.000001;    REDORs[0][1] = 0.000001;    REDORs[0][2] = 0.000003;    REDORs[0][3] = 0.000004;    REDORs[0][4] = 0.000006;    REDORs[0][5] = 0.000009;    REDORs[0][6] = 0.000011;    REDORs[0][7] = 0.000014;    REDORs[0][8] = 0.000018;
 REDORs[1][0] = 0.000004;    REDORs[1][1] = 0.000006;    REDORs[1][2] = 0.000011;    REDORs[1][3] = 0.000017;    REDORs[1][4] = 0.000025;    REDORs[1][5] = 0.000034;    REDORs[1][6] = 0.000045;    REDORs[1][7] = 0.000057;    REDORs[1][8] = 0.000070;
