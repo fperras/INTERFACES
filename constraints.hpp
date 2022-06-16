@@ -88,20 +88,55 @@ double dihedral_calc(double *atom1, double *atom2, double *atom3, double *atom4)
 }
 
 int are_bonded(vector< vector<int> > neighbors, int atom1, int atom2){
-    int i;
+    int i, bonded=0;
     for(i=0; i<neighbors[atom1].size(); i++){
-        if(neighbors[atom1][i] == atom2)
-            return 1;
+        bonded=bonded+(neighbors[atom1][i] == atom2);
     }
-    return 0;
+    return bonded;
 }
 
 int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, double surface_collision_distance, double interatomic_collision_distance){
     //This function returns true if there is either an interatomic (< 1A) or surface-atom collision.
     //A surface-atom distance of exactly zero is ignored as it is assumed to be a surface atom.
     int i,j;
-    clock_t start, end;
-    double int_dist_sq=interatomic_collision_distance*interatomic_collision_distance;
+    double d,x,y,z;
+
+    for(i=0;i<N_atoms;i++){
+        if(xyz[i][2]>surface_collision_distance)
+            continue;
+        if(xyz[i][2]!=0.0)
+            return 1;
+        }
+
+    for(i=0;i<N_atoms;i++){
+        for(j=i+1;j<N_atoms; j++){
+            x=xyz[i][0]-xyz[j][0];
+            if(x>interatomic_collision_distance)
+                continue;
+
+            y=xyz[i][1]-xyz[j][1];
+            if(y>interatomic_collision_distance)
+                continue;
+
+            z=xyz[i][2]-xyz[j][2];
+            if(z>interatomic_collision_distance)
+                continue;
+
+            d=x*x+y*y+z*z;
+            if(d> interatomic_collision_distance)
+                continue;
+
+            if(!are_bonded(neighbors,i,j))
+                return 1;
+    }
+}
+    return 0;
+}
+
+int collisions_old(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, double surface_collision_distance, double interatomic_collision_distance){
+    //This function returns true if there is either an interatomic (< 1A) or surface-atom collision.
+    //A surface-atom distance of exactly zero is ignored as it is assumed to be a surface atom.
+    int i,j;
 
     for(i=0;i<N_atoms;i++){
         if(xyz[i][2]<surface_collision_distance){
@@ -109,16 +144,8 @@ int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, d
             return 1;
         }
         for(j=i+1;j<N_atoms; j++){
-            if(xyz[i][0]-xyz[j][0]>interatomic_collision_distance)
-                j++;
-            else if(xyz[i][1]-xyz[j][1]>interatomic_collision_distance)
-                j++;
-            else if(xyz[i][2]-xyz[j][2]>interatomic_collision_distance)
-                j++;
-            else if(distance_sq(xyz[i],xyz[j]) < int_dist_sq){
-                if(!are_bonded(neighbors,i,j))
-                    return 1;
-            }
+            if(distance_calc(xyz[i],xyz[j])<1.0)
+                return 1;
     }}
     return 0;
 }
