@@ -913,7 +913,6 @@ int main(){
     }
 
     printf("\nFound a total of %d acceptable structures,\n%d of which were within the requested RMSD from the best one\n", acceptable_structures+other_structures, acceptable_structures);
-    fclose(mol2_file);
 
     //if there are too many structures, erase the structures and exit the program
     if(max_accept_failsafe == 1){
