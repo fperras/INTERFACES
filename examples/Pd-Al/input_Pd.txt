@@ -5,7 +5,7 @@ stretch 1 122 -2 6 81
 
 //Constraints
 confidence_level 90
-collision_distance 1.2
+surface_collision_distance 1.2
 cutoff_rmsd 4.0
 
 intramolecular-REDOR SREDOR.txt 1.0
