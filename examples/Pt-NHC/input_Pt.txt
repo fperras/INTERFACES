@@ -10,6 +10,7 @@ stretch 22 23 -1 2 4
 //Constraints
 confidence_level 90
 surface_collision_distance 1.4
+interatomic_collision_distance 1.4
 cutoff_rmsd 4.0
 distance_constraint 18 19 2.6 2.8 //Pt-O bond length
 
