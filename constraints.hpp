@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <vector>
 #include <time.h>
+#include <algorithm>
 static double Pi = 3.1415926535897932384626433;
 using namespace std;
 
@@ -87,10 +88,10 @@ double dihedral_calc(double *atom1, double *atom2, double *atom3, double *atom4)
     return ((triple<0.) - (triple>=0.))*dihedral;
 }
 
-int are_bonded(vector< vector<int> > neighbors, int atom1, int atom2){
-    int i, bonded=0;
+int not_bonded(vector< vector<int> > neighbors, int atom1, int atom2){
+    int i, bonded=1;
     for(i=0; i<neighbors[atom1].size(); i++){
-        bonded=bonded+(neighbors[atom1][i] == atom2);
+        bonded=bonded*(neighbors[atom1][i] != atom2);
     }
     return bonded;
 }
@@ -123,10 +124,11 @@ int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, d
                 continue;
 
             d=x*x+y*y+z*z;
-            if(d> interatomic_collision_distance)
+            if(d> interatomic_collision_distance*interatomic_collision_distance)
                 continue;
 
-            if(!are_bonded(neighbors,i,j))
+            //check if the two atoms are bonded
+            if(find(neighbors[i].begin(),neighbors[i].end(),j)==neighbors[i].end())
                 return 1;
     }
 }
