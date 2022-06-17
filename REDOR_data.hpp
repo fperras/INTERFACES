@@ -205,7 +205,7 @@ int load_exp_curve(const char *filename, vector<double> &DSS0, vector<double> &t
 	}
 
 	for(i=0;i<Npoints;i++){
-		fgets(buffer,64,fp);
+		if(fgets(buffer,64,fp)!=NULL){
 		sscanf(buffer,"%lf %lf",&tmix[i],&DSS0[i]);
 		if(DSS0[i]<=0.){
             error_file=fopen(error_filename,"a");
@@ -218,7 +218,7 @@ int load_exp_curve(const char *filename, vector<double> &DSS0, vector<double> &t
             fprintf(error_file, "\nWARNING: Very low dephasing value of %lf in %s can lead to over fitting\nYou may obtain a better fit by eliminating this data point.\n",DSS0[i], filename);
             fclose(error_file);
 		}
-	}
+	}}
 
 	fclose(fp);
 	return 0;
