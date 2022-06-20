@@ -1,6 +1,5 @@
 #include "statistics.hpp"
 #include "constraints.hpp"
-#include "REDOR_library.hpp"
 
 int get_Nspins(char *buffer){
     //function returns the number of nuclei in a given recoupled_spins or detected_spins line
@@ -435,6 +434,37 @@ double RDD(double RDD_1A, double distance){
     FILE *error_file;
 
     return RDD_1A*pow(distance,-3.0);
+}
+
+void generate_REDORs(vector< vector<double> > &REDORs){
+    //This function generates a REDOR/RESPDOR library of curves assuming a 100 Hz RDD
+    //in time increments of 10us up to 100ms
+    //data are organized as REDORs[(time-10us)/10us][spin*2]=DS/S0
+    //dimensions are fixed at REDORs[1000][9] and the data are stored in the REDOR_library.txt file
+    FILE *fp, *error_file;
+    int i;
+    char buffer[128];
+
+    fp=fopen("REDOR_library.txt","r");
+    if(fp==NULL){
+        error_file=fopen("Errors.txt","a");
+        fprintf(error_file, "\nERROR: REDOR_library.txt not found\n");
+        fclose(error_file);
+        exit(1);
+    }
+
+    for(i=0;i<10000;i++){
+        if(fgets(buffer, sizeof(buffer), fp)!=NULL){
+            sscanf(buffer,"%lf %lf %lf %lf %lf %lf %lf %lf %lf",&REDORs[i][0],&REDORs[i][1],&REDORs[i][2],&REDORs[i][3],&REDORs[i][4],&REDORs[i][5],&REDORs[i][6],&REDORs[i][7],&REDORs[i][8]);
+        }
+        else{
+            error_file=fopen("Errors.txt","a");
+            fprintf(error_file, "\nERROR: REDOR_library.txt file is missing data\n");
+            fclose(error_file);
+            exit(1);
+        }
+    }
+    fclose(fp);
 }
 
 double REDOR_DSS0(double RDD,double time, double order_parameter, int spin, vector< vector<double> > &REDORs){
