@@ -11,7 +11,7 @@ g++ main.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
 an argument for the input file. Compile it using OpenMP and O3 optimizations. For instance:
 g++ main_cluster.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
 
-2a) You'd then submit this job by adding the following command to your job submission script:
+To submit a job to a cluster, use the following command in your job submission script:
 ./INTERFACES input_file > log.txt
 
 Precompiled binaries are available in the binaries directory for windows, linux, and a linux cluster
