@@ -11,7 +11,11 @@ g++ main.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
 an argument for the input file. Compile it using OpenMP and O3 optimizations. For instance:
 g++ main_cluster.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
 
+2a) You'd then submit this job by adding the following command to your job submission script:
+./INTERFACES input_file > log.txt
+
 Precompiled binaries are available in the binaries directory for windows, linux, and a linux cluster
 
 Note: All needed REDOR library files (see REDOR libraries directory) must be included in the running 
-directory of the program, together with the input file, any REDOR data files, and the starting structure, given as a mol2 file. Please reference the publication and the examples for more details.
+directory of the program, together with the input file, any REDOR data files, and the starting structure, 
+given as a mol2 file. Please reference the publication and the examples for more details.
