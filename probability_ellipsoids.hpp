@@ -87,12 +87,12 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
         if(i==line_Atoms+1){
             i++;
             for(j=0; j<N_atoms; j++){
-                sscanf(buffer,"%d %s %lf %lf %lf", &atom_id[j], &element[j],&coordinates[j][0][0],&coordinates[j][0][1],&coordinates[j][0][2]);
+                sscanf(buffer,"%d %s %lf %lf %lf", &atom_id[j], element[j],&coordinates[j][0][0],&coordinates[j][0][1],&coordinates[j][0][2]);
                 fgets(buffer, sizeof(buffer), fp);
             }
             for(k=1;k<N_structures;k++){
                 for(j=0; j<N_atoms; j++){
-                    sscanf(buffer,"%d %s %lf %lf %lf", &junk, &crap,&coordinates[j][k][0],&coordinates[j][k][1],&coordinates[j][k][2]);
+                    sscanf(buffer,"%d %s %lf %lf %lf", &junk, crap,&coordinates[j][k][0],&coordinates[j][k][1],&coordinates[j][k][2]);
                     fgets(buffer, sizeof(buffer), fp);
             }}}
         else
@@ -159,7 +159,6 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
 
     double U[3][3], E[3][3];
     double rms_max[N_atoms][3], phi_max[N_atoms], theta_max[N_atoms], psi_max[N_atoms];
-    double ref_vec[3];
 
     //finding the theta and psi Euler angles along with the Z RMS values
     #pragma omp parallel for

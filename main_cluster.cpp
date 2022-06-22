@@ -3,18 +3,15 @@
 #include "overlay_structures.hpp"
 #include "probability_ellipsoids.hpp"
 #include <ctype.h>
-
 /*Use this version of the main.cpp file when using a cluster. It uses an argument for the input file rather than asking for it in the command line*/
-
-
 int main(int argc, char *argv[]){
-    char input_filename[120], mol2_filename[120],  output_filename[128], error_filename[128], buffer[256], keyword[64], support[32];
-    int I, i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
+    char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
+    int  i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
-    vector<vector<int>> REDOR_det_index, REDOR_rec_index;
-    FILE *input, *mol2_file, *out, *error_file;
+    vector<vector<int> > REDOR_det_index, REDOR_rec_index;
+    FILE *input, *mol2_file, *error_file;
 
     printf("\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
     printf("  888   8888b   888     888     888        888   Y88b 888           d88888 d88P  Y88b 888        d88P  Y88b \n");
@@ -31,25 +28,25 @@ int main(int argc, char *argv[]){
     printf("\nWritten by James Cunningham and Frederic A. Perras\n");
     printf("US DOE, Ames Laboratory, 2022\n");
 
-    
+
     //Opening the error file to print out any issues that come up
     sprintf(error_filename,"Errors.txt");
     remove(error_filename);
     error_file=fopen(error_filename,"w");
     fclose(error_file);
-    
+
   if (argc < 2) {
         error_file=fopen(error_filename,"a");
-        fprintf(error_file, "\nERROR: Missing input file declaration\n", input_filename);
+        fprintf(error_file, "\nERROR: Missing input file declaration\n");
         fclose(error_file);
         exit(1);
    }
-   
+
    else{
    	printf("\nreading %s\n\n",argv[1]);
    	sprintf(input_filename,"%s",argv[1]);
    }
-    
+
 
     //Here the provided input file is read
     input=fopen(input_filename,"r");
@@ -60,45 +57,45 @@ int main(int argc, char *argv[]){
             exit(1);
         }
     while(fgets(buffer, sizeof(buffer), input) != NULL){
-        sscanf(buffer,"%s",&keyword);
+        sscanf(buffer,"%s",keyword);
         if(strcmp(keyword, "structure")==0){
-            sscanf(buffer,"%s %s",&keyword,&mol2_filename);
+            sscanf(buffer,"%s %s",keyword,mol2_filename);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "support")==0){
-            sscanf(buffer,"%s %s",&keyword,&support);
+            sscanf(buffer,"%s %s",keyword,support);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "surface_collision_distance")==0){
-            sscanf(buffer,"%s %lf",&keyword,&surface_collision_distance);
+            sscanf(buffer,"%s %lf",keyword,&surface_collision_distance);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "interatomic_collision_distance")==0){
-            sscanf(buffer,"%s %lf",&keyword,&interatomic_collision_distance);
+            sscanf(buffer,"%s %lf",keyword,&interatomic_collision_distance);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "z_distance")==0){
-            sscanf(buffer,"%s %lf %lf %d",&keyword,&z_min, &z_max, &N_steps_Z);
+            sscanf(buffer,"%s %lf %lf %d",keyword,&z_min, &z_max, &N_steps_Z);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "rotate_x")==0){
-            sscanf(buffer,"%s %d",&keyword, &N_steps_X);
+            sscanf(buffer,"%s %d",keyword, &N_steps_X);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "rotate_y")==0){
-            sscanf(buffer,"%s %d",&keyword, &N_steps_Y);
+            sscanf(buffer,"%s %d",keyword, &N_steps_Y);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "confidence_level")==0){
-            sscanf(buffer,"%s %lf",&keyword,&threshold_accuracy);
+            sscanf(buffer,"%s %lf",keyword,&threshold_accuracy);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "max_structures")==0){
-            sscanf(buffer,"%s %d",&keyword,&max_acceptable_struct);
+            sscanf(buffer,"%s %d",keyword,&max_acceptable_struct);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "cutoff_rmsd")==0){
-            sscanf(buffer,"%s %lf",&keyword,&cutoff_RMSD);
+            sscanf(buffer,"%s %lf",keyword,&cutoff_RMSD);
             sprintf(keyword,"void");
         }
         //These calls are counted to determine the number of curves, bonds, and constraints, but they are not read yet.
@@ -144,9 +141,9 @@ int main(int argc, char *argv[]){
     int counter=0;
     i=j=0;
     while(fgets(buffer, sizeof(buffer), input) != NULL){
-        sscanf(buffer," %s",&keyword);
+        sscanf(buffer," %s",keyword);
             if(strcmp(keyword, "revolve")==0){
-                sscanf(buffer, "%s %d %d %d", &keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].N_steps);
+                sscanf(buffer, "%s %d %d %d", keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].N_steps);
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
                 bond[bond_index].type=0;
@@ -154,7 +151,7 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }
             else if(strcmp(keyword, "stretch")==0){
-                sscanf(buffer, "%s %d %d %lf %lf %d", &keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                sscanf(buffer, "%s %d %d %lf %lf %d", keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
                 bond[bond_index].type=1;
@@ -162,7 +159,7 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }
             else if(strcmp(keyword, "bend")==0){
-                sscanf(buffer, "%s %d %d %d %lf %lf %d", &keyword, &bond[bond_index].atom0, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                sscanf(buffer, "%s %d %d %d %lf %lf %d", keyword, &bond[bond_index].atom0, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
                 bond[bond_index].atom0=bond[bond_index].atom0-1;
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
@@ -173,12 +170,12 @@ int main(int argc, char *argv[]){
             else if(strcmp(keyword, "surface-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[counter], &scaling_factor[counter]);
+                sscanf(buffer,"%s %s %lf",keyword,curve_filename[counter], &scaling_factor[counter]);
                 curve_type[counter]=0;
 
                 if((scaling_factor[counter]>1.)||(scaling_factor[counter]<=0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
                     fclose(error_file);
                     scaling_factor[counter]=1.0;
                 }
@@ -187,7 +184,7 @@ int main(int argc, char *argv[]){
                 j=0;
 
                 fgets(buffer, sizeof(buffer), input);
-                sscanf(buffer,"%s",&keyword);
+                sscanf(buffer,"%s",keyword);
                 if(strcmp(keyword, "detected_spins")==0){
                     char *ptr = buffer, word[32];
                     sscanf(ptr,"%s",word);
@@ -219,19 +216,19 @@ int main(int argc, char *argv[]){
             else if(strcmp(keyword, "intramolecular-REDOR")==0){
                 REDOR_det_index.push_back(vector<int>());
                 REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",&keyword,&curve_filename[counter], &scaling_factor[counter]);
+                sscanf(buffer,"%s %s %lf",keyword,curve_filename[counter], &scaling_factor[counter]);
                 curve_type[counter]=1;
 
                 if((scaling_factor[counter]>1.)||(scaling_factor[counter]<0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %d in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
                     fclose(error_file);
                     scaling_factor[counter]=1.0;
                 }
                 j=0;
 
                     fgets(buffer, sizeof(buffer), input);
-                    sscanf(buffer,"%s",&keyword);
+                    sscanf(buffer,"%s",keyword);
 
                     if(strcmp(keyword, "detected_spins")==0){
                        char *ptr = buffer, word[32];
@@ -249,7 +246,7 @@ int main(int argc, char *argv[]){
                         Nspins[i]=j;
 
                         fgets(buffer, sizeof(buffer), input);
-                        sscanf(buffer,"%s",&keyword);
+                        sscanf(buffer,"%s",keyword);
 
                        if(strcmp(keyword, "recoupled_spins")==0){
                        char *ptr = buffer, word[32];
@@ -296,7 +293,7 @@ int main(int argc, char *argv[]){
                         Nrecspins[i]=j;
 
                         fgets(buffer, sizeof(buffer), input);
-                        sscanf(buffer,"%s",&keyword);
+                        sscanf(buffer,"%s",keyword);
 
                        if(strcmp(keyword, "detected_spins")==0){
                        char *ptr = buffer, word[32];
@@ -333,7 +330,7 @@ int main(int argc, char *argv[]){
             }//intramolecular curve
 
             else if(strcmp(keyword, "distance_constraint")==0){
-                sscanf(buffer,"%s %d %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
+                sscanf(buffer,"%s %d %d %lf %lf",keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
                 constraint[Nconst].atom2--;
                 constraint[Nconst].type=0;
@@ -348,7 +345,7 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }
             else if(strcmp(keyword, "angle_constraint")==0){
-                sscanf(buffer,"%s %d %d %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].atom3, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
+                sscanf(buffer,"%s %d %d %d %lf %lf",keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2, &constraint[Nconst].atom3, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
                 constraint[Nconst].atom2--;
                 constraint[Nconst].atom3--;
@@ -364,7 +361,7 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }
             else if(strcmp(keyword, "dihedral_constraint")==0){
-                sscanf(buffer,"%s %d %d %d %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2,&constraint[Nconst].atom3,&constraint[Nconst].atom4, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
+                sscanf(buffer,"%s %d %d %d %d %lf %lf",keyword,&constraint[Nconst].atom1, &constraint[Nconst].atom2,&constraint[Nconst].atom3,&constraint[Nconst].atom4, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
                 constraint[Nconst].atom2--;
                 constraint[Nconst].atom3--;
@@ -382,7 +379,7 @@ int main(int argc, char *argv[]){
             }
 
             else if(strcmp(keyword, "surface_distance_constraint")==0){
-                sscanf(buffer,"%s %d %lf %lf",&keyword,&constraint[Nconst].atom1, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
+                sscanf(buffer,"%s %d %lf %lf",keyword,&constraint[Nconst].atom1, &constraint[Nconst].minimum, &constraint[Nconst].maximum);
                 constraint[Nconst].atom1--;
                 constraint[Nconst].type=3;
 
@@ -399,7 +396,7 @@ int main(int argc, char *argv[]){
             else if(strcmp(keyword, "order_parameter")==0){
                 int index;
                 double S;
-                sscanf(buffer,"%s %d %lf",&keyword,&index, &S);
+                sscanf(buffer,"%s %d %lf",keyword,&index, &S);
 
                 if(index>N_curves){
                     error_file=fopen(error_filename,"a");
@@ -434,7 +431,7 @@ int main(int argc, char *argv[]){
     //First the program extracts the line numbers where the atom and bond tables begin, in addition to the number of atoms and bonds.
     i=j=0;
     while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
-        sscanf(buffer,"%s",&keyword);
+        sscanf(buffer,"%s",keyword);
             if(strcmp(keyword, "@<TRIPOS>MOLECULE")==0){
                 fgets(buffer, sizeof(buffer), mol2_file);
                 fgets(buffer, sizeof(buffer), mol2_file);
@@ -473,7 +470,7 @@ int main(int argc, char *argv[]){
         if(k==line_Atoms+1){
             for(i=0; i<N_atoms; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], &element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
                 //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
                 element[i][0]=toupper(element[i][0]);
                 element[i][1]=tolower(element[i][1]);
@@ -482,7 +479,7 @@ int main(int argc, char *argv[]){
         else if(k==line_Bonds){
             for(i=0; i<N_bonds; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], bond_type[i]);
                 neighbors[ori_atom_id[i]-1].push_back(tar_atom_id[i]-1);
                 neighbors[tar_atom_id[i]-1].push_back(ori_atom_id[i]-1);
                 k++;
@@ -494,16 +491,14 @@ int main(int argc, char *argv[]){
     fclose(mol2_file);
 
     center_structure(N_atoms,xyz);
-
-    double NMR_z_coord_sum[N_curves], NMR_z_avg[N_curves];
     k = 0;
 
     //Here the program created tables of Chi^2 values as a function of distance and standard deviation of distance
     //between the atom and the surface plane.  There is one table per atom.
     //In the special case where there are two atoms contributing to a given REDOR curve, the program will calculate the
     //average REDOR curve for the pair, otherwise a gaussian distribution is used.
-    vector<vector<vector<double>>> X2;
-    X2.resize(N_curves, vector<vector<double>>(200,vector<double>(101,0.)));
+    vector<vector<vector<double> > > X2;
+    X2.resize(N_curves, vector<vector<double> >(200,vector<double>(101,0.)));
     for(i=0; i<N_curves; i++){
         create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
     }
@@ -554,17 +549,13 @@ int main(int argc, char *argv[]){
     //set chi2 values to a very high starting values to ensure a fit is found
     double chi2_min = 5000000;
     double curve_chi2[N_curves], curve_chi2_min[N_curves], curve_chi2_max[N_curves], best_struct_curve_chi2[N_curves];
-    int d_indices_min[N_curves], std_indices_min[N_curves];
 
     for(i=0; i<N_curves; i++){
         curve_chi2_min[i]=5000000;
         best_struct_curve_chi2[i]=5000000;
-        d_indices_min[i]=5000000;
-        std_indices_min[i]=5000000;
     }
 
     //These arrays to store the average  and stdev distances of the (0)best fit structure, (1)Smallest distance and (2)Largest distance from the surface
-    double distance_BSL[N_curves][3], stdev_BSL[N_curves][3];
     int d_indices_range[N_curves][3], std_indices_range[N_curves][3];
     for(i=0;i<N_curves;i++){
         d_indices_range[i][1]=1000;
@@ -746,12 +737,6 @@ int main(int argc, char *argv[]){
     //surface atoms are added to the mol2 file for plotting purposes.
     add_surface(best_filename);
 
-    //store the distance information for the best-fit structure
-    for(i=0;i<N_curves;i++){
-        distance_BSL[i][0] = get_average_distance(REDOR_det_index,REDOR_rec_index, xyz_best, i,curve_type[i]);
-        stdev_BSL[i][0] = get_STDEV(REDOR_det_index,REDOR_rec_index, xyz_best, i,curve_type[i]);
-    }
-
     //the max_Chi2 function returns the highest allowable Chi^2 value given a minimum value and an error range
     //See numerical recipes in C for a description of the calculation.
     for(i=0; i<N_curves; i++){
@@ -921,7 +906,7 @@ int main(int argc, char *argv[]){
         error_file=fopen(error_filename,"a");
         fprintf(error_file, "\nERROR: Only one acceptable structure found within the given constraints\n");
         fclose(error_file);
-        sprintf(overlay_filename, "%s_struct1.mol2", filename_base,i);
+        sprintf(overlay_filename, "%s_struct1.mol2", filename_base);
         remove(overlay_filename);
         exit(1);
     }

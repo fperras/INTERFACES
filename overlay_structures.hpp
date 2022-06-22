@@ -21,8 +21,7 @@ void center_structure(int N_atoms, double (*xyz)[3]){
 double rmsd(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
     //returns the rmsd between two structures
     //used to overlay two structures
-
-    int i,j;
+    int i;
     double RMSD=0., dist;
 
     for(i=0;i<N_atoms;i++){
@@ -37,9 +36,8 @@ double overlay_structures(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
     //This function will reorient structure xyz so as to minimize the RMSD with xyz_ref
     //The function also returns this RMSD which can be used to exclude certain structured
     //from an overlaid mol2/cif file.
-    double xyz_temp[N_atoms][3];
     double RMSDm, RMSDp, RMSDo;
-    int i,check_x=1, check_y=1, check_z=1, count=0;
+    int check_x=1, check_y=1, check_z=1, count=0;
     double RMSD_start, RMSD_end, RMSD_threshold=0.0001;
 
     //The function is a nested do-while loop wherein the structure is translated along x, then y, and then rotated along z, in that order.

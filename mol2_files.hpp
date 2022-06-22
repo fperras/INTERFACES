@@ -44,7 +44,7 @@ void add_surface(char *mol2_filename){
     //This function adds 5 bonded silicon atoms at the material surface
     //These are useful for generating Figures and visualizing the orientation of the complex on the surface
     FILE *fp, *out;
-    int i, j, k, line_Atoms, line_Bonds, N_atoms, N_bonds;
+    int i, j, line_Atoms, N_atoms, N_bonds;
     char error_filename[128], buffer[120];
     sprintf(error_filename,"Errors.txt");
     FILE *error_file;
@@ -69,9 +69,6 @@ void add_surface(char *mol2_filename){
             if(strcmp(buffer, "@<TRIPOS>ATOM\n")==0){
                 line_Atoms = i;
                 }
-            if(strcmp(buffer, "@<TRIPOS>BOND\n")==0){
-                line_Bonds = j;
-            }
             i++; j++;
     }
     fclose(fp);
@@ -135,7 +132,7 @@ void compile_mol2_files(char *base_filename, int num_files){
     char error_filename[128], buffer[120];
     sprintf(error_filename,"Errors.txt");
     FILE *error_file, *fp, *in, *out;
-    int atom_index = 1, i, j, k = 1, line_Molecule, line_Atoms, line_Bonds, N_atoms, N_bonds;
+    int atom_index = 1, i, j, k = 1, line_Atoms, line_Bonds, N_atoms, N_bonds;
     int structure_filename_len=strlen(base_filename)+20;
     char structure_filename[structure_filename_len];
     sprintf(structure_filename, "%s_struct1.mol2", base_filename);
@@ -184,7 +181,7 @@ void compile_mol2_files(char *base_filename, int num_files){
     while(fgets(buffer, sizeof(buffer), fp) != NULL){
         if(j==line_Bonds+1){
             for(i=0; i<N_bonds; i++){
-                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], bond_type[i]);
                 fgets(buffer, sizeof(buffer), fp);
                 j++;
             }}
@@ -232,7 +229,7 @@ void compile_mol2_files(char *base_filename, int num_files){
         while(fgets(buffer, sizeof(buffer), in) != NULL){
             if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
                     fgets(buffer, sizeof(buffer), in);
@@ -266,7 +263,7 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
     sprintf(error_filename,"Errors.txt");
     sprintf(other_base_filename,"other_%s_struct",base_filename);
     FILE *error_file,*fp, *in, *out;
-    int atom_index = 1, i, j, k = 1, line_Molecule, line_Atoms, line_Bonds;
+    int atom_index = 1, i, j, k = 1, line_Atoms, line_Bonds;
     int N_atoms, N_bonds;
     int structure_filename_len=strlen(base_filename)+20;
     char structure_filename[structure_filename_len];
@@ -310,7 +307,7 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
     while(fgets(buffer, sizeof(buffer), fp) != NULL){
         if(j==line_Bonds+1){
             for(i=0; i<N_bonds; i++){
-                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], &bond_type[i]);
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], bond_type[i]);
                 fgets(buffer, sizeof(buffer), fp);
                 j++;
             }}
@@ -354,7 +351,7 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
         while(fgets(buffer, sizeof(buffer), in) != NULL){
             if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
                     fgets(buffer, sizeof(buffer), in);
@@ -386,7 +383,7 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
         while(fgets(buffer, sizeof(buffer), in) != NULL){
             if(j==line_Atoms+1){
                 for(i=1; i<N_atoms+1; i++){
-                    sscanf(buffer,"%s %s %s %s %s %s %s %s",&arguments[0],&arguments[1],&arguments[2],&arguments[3],&arguments[4],&arguments[5],&arguments[6],&arguments[7]);
+                    sscanf(buffer,"%s %s %s %s %s %s %s %s",arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     fprintf(out, "%d %s %s %s %s %s %s %s\n", atom_index,arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6],arguments[7]);
                     atom_index++;
                     fgets(buffer, sizeof(buffer), in);

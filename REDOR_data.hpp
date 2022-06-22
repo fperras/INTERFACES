@@ -1,22 +1,7 @@
 #include "statistics.hpp"
 #include "constraints.hpp"
 
-int get_Nspins(char *buffer){
-    //function returns the number of nuclei in a given recoupled_spins or detected_spins line
-    int word_count=0;
-    int len=strlen(buffer);
-    int i=1;
-
-    while(buffer[i] != '\0'){
-        if(((buffer[i]==' ')||(buffer[i]=='\n'))&&(buffer[i-1]!=' ')){
-            word_count++;
-            }
-        i++;
-    }
-    return word_count-1;
-}
-
-double get_effective_distance(vector<vector<int>> &REDOR_det_index,vector<vector<int>> &REDOR_rec_index, double (*xyz)[3], int curve_index, int det_index){
+double get_effective_distance(vector<vector<int> > &REDOR_det_index,vector<vector<int> > &REDOR_rec_index, double (*xyz)[3], int curve_index, int det_index){
     int i;
     double Deff=0., dist;
 
@@ -27,7 +12,7 @@ double get_effective_distance(vector<vector<int>> &REDOR_det_index,vector<vector
     return pow(1./Deff,1./6.);
 }
 
-double get_average_distance(vector<vector<int>> &REDOR_det_index,vector<vector<int>> &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
+double get_average_distance(vector<vector<int> > &REDOR_det_index,vector<vector<int> > &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
     //This function returns the average vertical distance for the atoms that contribute to a given curve (curve_index)
 
     double d_sum=0.;
@@ -48,7 +33,7 @@ double get_average_distance(vector<vector<int>> &REDOR_det_index,vector<vector<i
     return d_sum/REDOR_det_index[curve_index].size();
 }
 
-double get_STDEV(vector<vector<int>> &REDOR_det_index,vector<vector<int>> &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
+double get_STDEV(vector<vector<int> > &REDOR_det_index,vector<vector<int> > &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
     //This function returns the standard deviation of the vertical distance for the atoms that contribute to a given curve (curve_index)
     double d_STDEV_numerator=0.;
     int j;
@@ -68,18 +53,16 @@ double get_STDEV(vector<vector<int>> &REDOR_det_index,vector<vector<int>> &REDOR
 
 }
 
-int get_distance_index(vector<vector<int>> &REDOR_det_index, vector<vector<int>> &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
+int get_distance_index(vector<vector<int> > &REDOR_det_index, vector<vector<int> > &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
     //This function returns the average vertical distance for the atoms that contribute to a given curve (curve_index)
     //result is given as an index in the chi squared table (distance*10)
-    int i,j;
-
         double distance = get_average_distance(REDOR_det_index,REDOR_rec_index, xyz, curve_index,curve_type);
         int d_index=round(distance*10.+0.1001);
         d_index = (d_index>199)*199 + ((d_index<=199) && (d_index>0))*d_index;
         return d_index;
 }
 
-int get_STDEV_index(vector<vector<int>> &REDOR_det_index,vector<vector<int>> &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
+int get_STDEV_index(vector<vector<int> > &REDOR_det_index,vector<vector<int> > &REDOR_rec_index, double (*xyz)[3], int curve_index, int curve_type){
     //This function returns the standard deviation of the vertical distance for the atoms that contribute to a given curve (curve_index)
     //result is given as an index in the chi squared table (STDEV*10)
     double d_std = get_STDEV(REDOR_det_index,REDOR_rec_index, xyz, curve_index,curve_type);
@@ -429,10 +412,6 @@ double RDD_1A(const char *element1, const char *element2){
 
 double RDD(double RDD_1A, double distance){
     //This function returns the dipolar coupling constant between two nuclei.
-    char error_filename[128];
-	sprintf(error_filename,"Errors.txt");
-    FILE *error_file;
-
     return RDD_1A*pow(distance,-3.0);
 }
 
@@ -606,14 +585,14 @@ int create_X2_table(const char *filename, const char *support_name, const char *
 	return 0;
 }
 
-int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int>> &REDOR_det_index, vector<vector<int>> &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, double *order_parameter, int *Nspins, int *curve_type){
+int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int> > &REDOR_det_index, vector<vector<int> > &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, double *order_parameter, int *Nspins, int *curve_type){
     //This function writes out the REDOR curves form the best-fit structure as well as the range of dephasing for each curve
     //Data is stored in a CSV file
     //In the arrays listing the best-fin, minimum, and maximum distances and STDEV the indices have the following meaning:
     //0=Best Fit, 1=Smallest distance and 2=Largest distance from the surface
     FILE *error_file;
     char fits_filename[128];
-    int i, j, k;
+    int i, j;
     double DSS0;
     FILE *out;
 
