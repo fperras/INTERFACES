@@ -934,6 +934,8 @@ int main(int argc, char *argv[]){
 
     //for primary structures
     compile_mol2_files(filename_base, acceptable_structures);
+
+    printf("\nCalculating probability ellipsoids");
     create_cif(overlay_filename, N_atoms+5);
 
     //for all structures

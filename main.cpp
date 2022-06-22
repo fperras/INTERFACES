@@ -919,10 +919,12 @@ int main(){
     }
 
     //Creating overlay and probability ellipsoids..
-    printf("\nOverlaying Structures\n");
+    printf("\nOverlaying structures\n");
 
     //for primary structures
     compile_mol2_files(filename_base, acceptable_structures);
+
+    printf("\nCalculating probability ellipsoids");
     create_cif(overlay_filename, N_atoms+5);
 
     //for all structures

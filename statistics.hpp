@@ -58,7 +58,7 @@ double max_Chi2(double Chi2_min, double confidence_interval){
     return (2.*pow(inverf(confidence_interval),2.)+1.)*Chi2_min;
 }
 
-void generate_gaussians(vector< vector<double> > &g){
+void generate_gaussians(vector< vector<double> > &gaussians){
     //The function pre-computes a series of gaussian distributions of distances
     //the vector is formatted with the first index for offset distance, in 0.1A increments from -20 to +20
     //the second index is the standard deviation from 0 to 10 A in 0.1A;
@@ -69,7 +69,7 @@ void generate_gaussians(vector< vector<double> > &g){
         for(i=0;i<401;i++){
             d=0.1*i;
             dev=0.1*j;
-            g[i][j] = 0.5*erf(0.707107*(20.-(d-0.05))/dev)-0.5*erf(0.707107*(20.-(d+0.05))/dev);
+            gaussians[i][j] = 0.5*erf(0.707107*(20.-(d-0.05))/dev)-0.5*erf(0.707107*(20.-(d+0.05))/dev);
     }}
 }
 

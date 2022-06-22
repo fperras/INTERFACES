@@ -161,6 +161,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     double rms_max[N_atoms][3], phi_max[N_atoms], theta_max[N_atoms], psi_max[N_atoms];
 
     //finding the theta and psi Euler angles along with the Z RMS values
+    int counter=0;
     #pragma omp parallel for
     for(i=0;i<N_atoms;i++){
         double phi, theta, psi, R[3][3], rms;
@@ -182,6 +183,8 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
                 }
             }
         }
+        counter++;
+        printf("\n%d/%d",counter,N_atoms);
     }
 
     //finding the value of phi and the X and Y RMS values
