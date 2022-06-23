@@ -47,6 +47,7 @@ int main(int argc, char *argv[]){
    	sprintf(input_filename,"%s",argv[1]);
    }
 
+   clock_t start=clock();
 
     //Here the provided input file is read
     input=fopen(input_filename,"r");
@@ -493,6 +494,8 @@ int main(int argc, char *argv[]){
     center_structure(N_atoms,xyz);
     k = 0;
 
+    clock_t filet=clock();
+
     //Here the program created tables of Chi^2 values as a function of distance and standard deviation of distance
     //between the atom and the surface plane.  There is one table per atom.
     //In the special case where there are two atoms contributing to a given REDOR curve, the program will calculate the
@@ -503,6 +506,7 @@ int main(int argc, char *argv[]){
         create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
     }
 
+    clock_t fitt=clock();
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
     //get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
@@ -723,6 +727,9 @@ int main(int argc, char *argv[]){
     char best_filename[128];
     sprintf(best_filename,"%s_best.mol2", filename_base);
     remove(best_filename);
+
+    clock_t bestt=clock();
+
     #pragma omp parallel
     {
         char thread_filename[128];
@@ -897,6 +904,7 @@ int main(int argc, char *argv[]){
             }
         }}
     }
+    clock_t allt=clock();
 
     //Next we will write the structure overlay files
     char overlay_filename[128];
@@ -930,17 +938,38 @@ int main(int argc, char *argv[]){
     }
 
     //Creating overlay and probability ellipsoids..
-    printf("\nOverlaying Structures\n");
+    printf("\nOverlaying structures\n");
 
     //for primary structures
     compile_mol2_files(filename_base, acceptable_structures);
 
     printf("\nCalculating probability ellipsoids");
     create_cif(overlay_filename, N_atoms+5);
+    clock_t cift=clock();
 
     //for all structures
     compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
+    printf("\nWriting the fitted RE(SP)DOR data to a file\n");
     write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
+
+    clock_t endt=clock();
+
+    printf("\nStructure determination finished successfully\n");
+
+    float time[6];
+    time[0]=(float)(filet - start) / CLOCKS_PER_SEC;
+    time[1]=(float)(fitt - filet) / CLOCKS_PER_SEC;
+    time[2]=(float)(bestt - fitt) / CLOCKS_PER_SEC;
+    time[3]=(float)(allt - bestt) / CLOCKS_PER_SEC;
+    time[4]=(float)(cift - allt) / CLOCKS_PER_SEC;
+    time[5]=(float)(endt - start) / CLOCKS_PER_SEC;
+
+    printf("\n%f seconds to read the files\n",time[0]);
+    printf("%f seconds to fit the RE(SP)DOR data\n",time[1]);
+    printf("%f seconds to find the best-fit structure\n",time[2]);
+    printf("%f seconds to find all structures that agree with experiment\n",time[3]);
+    printf("%f seconds to calculate the thermal ellipsoids\n\n",time[4]);
+    printf("Total time: %f seconds\n",time[5]);
 }//end int main
