@@ -943,7 +943,7 @@ int main(int argc, char *argv[]){
     compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
-    printf("\nWriting the fitted RE(SP)DOR data to a file\n");
+    printf("\n\nWriting the fitted RE(SP)DOR data to a file\n");
     write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
 
     printf("\nStructure determination finished successfully\n");
