@@ -408,6 +408,15 @@ int main(){
 
     //Next we read the provided starting mol2 file to extract the atomic coordinates and bonding connectivities.
     //The bonding connectivities are used when determining which atoms are affected by a given rotation.
+    int mol2_len=strlen(mol2_filename);
+    const char *filetype = &mol2_filename[mol2_len-5];
+    if(strcmp(filetype,".mol2")!=0){
+        error_file=fopen(error_filename,"a");
+        fprintf(error_file, "\nERROR: Structure must be provided as a *.mol2 file\n", input_filename);
+        fclose(error_file);
+        exit(1);
+    }
+    
     mol2_file=fopen(mol2_filename, "r");
 
     if(mol2_file==NULL){
