@@ -1,0 +1,5 @@
+29SiO2 = 100% 29Si-enriched amorphous silica surface (REDOR experiment)
+SiO2_17OH = Silica material with 100% of surface oxygen atoms exchanged with 17O (RESPDOR experiment)
+SiO2_80p_17OH = Silica material with 80% of surface oxygen atoms exchanged with 17O (RESPDOR experiment)
+SiO2_60p_17OH = Silica material with 60% of surface oxygen atoms exchanged with 17O (RESPDOR experiment)
+SiO2_40p_17OH = Silica material with 40% of surface oxygen atoms exchanged with 17O (RESPDOR experiment)
