@@ -611,7 +611,9 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
     vector< vector< vector<double> > > DSS0_lib;
     DSS0_lib.resize(N_curves, vector<vector<double> > (250, vector<double>(200,0.)));
 
+    int all_types=0;
     for(j=0;j<N_curves;j++){
+            all_types=all_types+curve_type[j];
             if(curve_type[j]==0)
                 load_simulations(support_name, element[REDOR_det_index[j][0]], DSS0_lib[j]);
     }
@@ -622,7 +624,9 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
 
     vector< vector<double> > REDORs;
     REDORs.resize(10000, vector<double>(9,0.));
-    generate_REDORs(REDORs);
+
+    if(all_types!=0)
+        generate_REDORs(REDORs);
 
     //writing the header to the CSV file
     fprintf(out,",");
