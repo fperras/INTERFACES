@@ -26,7 +26,7 @@ int main(){
     printf("_____________________________________________________________________________________________________\n");
     printf("\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
     printf("\nWritten by James Cunningham and Frederic A. Perras\n");
-    printf("US DOE, Ames Laboratory, 2022\n");
+    printf("US DOE, Ames National Laboratory, 2022\n");
 
     printf ("\nPlease enter the name of your INTERFACES input file:\n");
     scanf ("%s", input_filename);
