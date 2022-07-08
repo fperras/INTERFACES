@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
     printf("_____________________________________________________________________________________________________\n");
     printf("\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
     printf("\nWritten by James Cunningham and Frederic A. Perras\n");
-    printf("US DOE, Ames Laboratory, 2022\n");
+    printf("US DOE, Ames National Laboratory, 2022\n");
 
 
     //Opening the error file to print out any issues that come up
