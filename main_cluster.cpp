@@ -426,7 +426,7 @@ int main(int argc, char *argv[]){
         fclose(error_file);
         exit(1);
     }
-    
+
     mol2_file=fopen(mol2_filename, "r");
 
     if(mol2_file==NULL){
@@ -718,7 +718,18 @@ int main(int argc, char *argv[]){
             }
 
             //This this structure has the new lowest Chi^2 value for a given curve, the existing value is replaced.
-        }}
+        }
+        else if(it==0){
+            error_file=fopen(error_filename,"a");
+            fprintf(error_file, "\nNOTE: The initial structure does not pass the collision distance constraints.\n");
+            fclose(error_file);
+        }
+        }
+        else if(it==0){
+            error_file=fopen(error_filename,"a");
+            fprintf(error_file, "\nNOTE: The initial structure does not pass the provided distance, angle, or dihedral constraints.\n");
+            fclose(error_file);
+        }
     }
 
     if (chi2_min == 5000000){
