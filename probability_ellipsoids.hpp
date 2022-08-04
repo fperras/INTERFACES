@@ -184,7 +184,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
             }
         }
         counter++;
-        printf("\n%d/%d",counter,N_atoms);
+        printf("\nCalculating probability ellipsoids for atom %d of %d",counter,N_atoms);
     }
 
     //finding the value of phi and the X and Y RMS values
