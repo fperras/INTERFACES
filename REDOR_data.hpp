@@ -215,6 +215,8 @@ int spin(const char *element){
 
         if(strcmp(element,"H")==0)
             return 1;
+	else if(strcmp(element,"D")==0)
+            return 2;
         else if(strcmp(element,"Li")==0)
             return 3;
         else if(strcmp(element,"Be")==0)
@@ -319,6 +321,8 @@ double RDD_1A(const char *element1, const char *element2){
     for(i=0;i<2;i++){
         if(strcmp(nuclei[i],"H")==0)
             gamma[i]=(i)*192.4814-(i-1)*346.5883;
+	else if(strcmp(nuclei[i],"D")==0)
+            gamma[i]=53.203;
         else if(strcmp(nuclei[i],"Li")==0)
             gamma[i]=134.7074;
         else if(strcmp(nuclei[i],"Be")==0)
