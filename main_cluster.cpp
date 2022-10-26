@@ -6,7 +6,7 @@
 /*Use this version of the main.cpp file when using a cluster. It uses an argument for the input file rather than asking for it in the command line*/
 int main(int argc, char *argv[]){
     char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
-    int  i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
+    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0, meticulous=0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
