@@ -1,4 +1,4 @@
-#include "REDOR_data.hpp"
+#include "on-the-fly-REDOR.hpp"
 
 void center_structure(int N_atoms, double (*xyz)[3]){
 //This function will recenter the structure at the origin on the surface to enable optimal viewing of the overlays

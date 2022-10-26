@@ -8,14 +8,13 @@ using namespace std;
 
 double calc_chi2(vector<vector< vector<double> > > &X2, int *std_index, int *d_index, int N_curves) {
     //This function compiles the total Chi^2 of a given structure by summing the values from the individual curves
-    double chi2, total_chi2 = 0;
+    double chi2 = 0;
     int i;
 
     for(i=0; i<N_curves; i++){
-        chi2 = X2[i][d_index[i]][std_index[i]];
-        total_chi2 = chi2 + total_chi2;
+        chi2 = chi2+ X2[i][d_index[i]][std_index[i]];
     }
-    return total_chi2;
+    return chi2;
 }
 
 double sign(const double x){

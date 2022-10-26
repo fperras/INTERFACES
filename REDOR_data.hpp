@@ -57,7 +57,7 @@ int get_distance_index(vector<vector<int> > &REDOR_det_index, vector<vector<int>
     //This function returns the average vertical distance for the atoms that contribute to a given curve (curve_index)
     //result is given as an index in the chi squared table (distance*10)
         double distance = get_average_distance(REDOR_det_index,REDOR_rec_index, xyz, curve_index,curve_type);
-        int d_index=round(distance*10.+0.1001);
+        int d_index=round(distance*10.+0.1001-1.);
         d_index = (d_index>199)*199 + ((d_index<=199) && (d_index>0))*d_index;
         return d_index;
 }
@@ -118,13 +118,13 @@ double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double
 	time_index = (time_index>-1)*time_index;
 
 	if(Nspins==2){
-        distance=d_mean-d_std*d_std;
-        d_index=round(distance*10.+0.1001);
+        distance=d_mean-d_std;
+        d_index=round(distance*10.+0.1001-1.);
         d_index = (d_index>199)*199 + ((d_index<=199) && (d_index>0))*d_index;
         DSS0= DSS0 + 0.5*DSS0_lib[time_index][d_index];
 
-        distance=d_mean+d_std*d_std;
-        d_index=round(distance*10.+0.1001);
+        distance=d_mean+d_std;
+        d_index=round(distance*10.+0.1001-1.);
         d_index = (d_index>199)*199 + ((d_index<=199) && (d_index>0))*d_index;
         DSS0= DSS0 + 0.5*DSS0_lib[time_index][d_index];
 	}
@@ -488,7 +488,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
 	//X2 is ordered as X2[d_index][std_index]
 	//X2 has dimensions of X2[200][101]
 
-	printf("creating Chi2 table for %s\n",filename);
+	printf("Creating Chi2 table for %s\n",filename);
 	int Npoints=find_Npoints(filename);
 
 	vector<double> DSS0(Npoints,0.);
@@ -589,7 +589,7 @@ int create_X2_table(const char *filename, const char *support_name, const char *
 	return 0;
 }
 
-int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int> > &REDOR_det_index, vector<vector<int> > &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, double *order_parameter, int *Nspins, int *curve_type){
+void write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N_curves, const char *support_name, vector<vector<int> > &REDOR_det_index, vector<vector<int> > &REDOR_rec_index, char (*element)[3], char (*curve_filename)[120], double *scaling_factor, double *order_parameter, int *Nspins, int *curve_type){
     //This function writes out the REDOR curves form the best-fit structure as well as the range of dephasing for each curve
     //Data is stored in a CSV file
     //In the arrays listing the best-fin, minimum, and maximum distances and STDEV the indices have the following meaning:
@@ -599,6 +599,7 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
     int i, j;
     double DSS0;
     FILE *out;
+
 
     sprintf(fits_filename, "%s_REDOR_fits.csv", base_filename);
 
@@ -672,6 +673,4 @@ int write_fits(int (*distances)[3], int (*stdevs)[3], char *base_filename, int N
     }
 
     fclose(out);
-
-    return 0;
 }

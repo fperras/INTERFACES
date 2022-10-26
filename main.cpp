@@ -6,7 +6,7 @@
 
 int main(){
     char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
-    int  i, j, k, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0;
+    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0, meticulous=0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
@@ -47,7 +47,11 @@ int main(){
         }
     while(fgets(buffer, sizeof(buffer), input) != NULL){
         sscanf(buffer,"%s",keyword);
-        if(strcmp(keyword, "structure")==0){
+        if(strcmp(keyword, "meticulous")==0){
+            meticulous=1;
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "structure")==0){
             sscanf(buffer,"%s %s",keyword,mol2_filename);
             sprintf(keyword,"void");
         }
@@ -406,13 +410,27 @@ int main(){
         }//end while
     fclose(input);
 
+    //In the event that there are only 1 or 2 spins the fast approach is equivalent to the meticulous one.
+    int metic[N_curves];
+    for(i=0;i<N_curves;i++){
+        metic[i]=0;
+    }
+    if(meticulous==1){
+        for(i=0;i<N_curves;i++){
+            if(Nspins[i]>2)
+                metic[i]=1;
+            else
+                metic[i]=0;
+        }
+    }
+
     //Next we read the provided starting mol2 file to extract the atomic coordinates and bonding connectivities.
     //The bonding connectivities are used when determining which atoms are affected by a given rotation.
     int mol2_len=strlen(mol2_filename);
     const char *filetype = &mol2_filename[mol2_len-5];
     if(strcmp(filetype,".mol2")!=0){
         error_file=fopen(error_filename,"a");
-        fprintf(error_file, "\nERROR: Structure must be provided as a *.mol2 file\n", input_filename);
+        fprintf(error_file, "\nERROR: Structure must be provided as a *.mol2 file\n");
         fclose(error_file);
         exit(1);
     }
@@ -495,15 +513,38 @@ int main(){
     //between the atom and the surface plane.  There is one table per atom.
     //In the special case where there are two atoms contributing to a given REDOR curve, the program will calculate the
     //average REDOR curve for the pair, otherwise a gaussian distribution is used.
-    vector<vector<vector<double> > > X2;
+    vector< vector< vector<double> > > X2;
+    vector< vector<double> > DSS0;
+    vector< vector<double> > tmix;
+    vector< vector< vector<double> > > DSS0_lib;
+    vector< vector<double> > REDORs;
     X2.resize(N_curves, vector<vector<double> >(200,vector<double>(101,0.)));
+
+    DSS0.resize(N_curves);
+    tmix.resize(N_curves);
+    DSS0_lib.resize(N_curves);
+    REDORs.resize(10000, vector<double>(9,0.));
+    generate_REDORs(REDORs);
+    printf("\n");
+
     for(i=0; i<N_curves; i++){
-        create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
+        if(metic[i]==0)
+            create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
+        else{
+            printf("Curve %s will be calculated on-the-fly\n",curve_filename[i]);
+            int Npoints=find_Npoints(curve_filename[i]);
+            DSS0[i].resize(Npoints, 0.);
+            tmix[i].resize(Npoints, 0.);
+            load_exp_curve(curve_filename[i], DSS0[i], tmix[i]);//populates DSS0 and tmix, the experimental data
+            if(curve_type[i]==0){
+                DSS0_lib[i].resize(250, vector<double>(200,0.));
+                load_simulations(support, element[REDOR_det_index[i][0]], DSS0_lib[i]); //populates the simulations for spin i in the case of surface-atom REDOR
+            }
+        }
     }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
-    //get_aff_atoms(N_bonds, N_rotatable_bonds, bond, ori_atom_id, tar_atom_id);
     get_affected_atoms(N_rotatable_bonds,bond,neighbors);
 
     k=1;
@@ -546,7 +587,7 @@ int main(){
 
     //set chi2 values to a very high starting values to ensure a fit is found
     double chi2_min = 5000000;
-    double curve_chi2[N_curves], curve_chi2_min[N_curves], curve_chi2_max[N_curves], best_struct_curve_chi2[N_curves];
+    double curve_chi2_min[N_curves], curve_chi2_max[N_curves], best_struct_curve_chi2[N_curves];
 
     for(i=0; i<N_curves; i++){
         curve_chi2_min[i]=5000000;
@@ -555,6 +596,8 @@ int main(){
 
     //These arrays to store the average  and stdev distances of the (0)best fit structure, (1)Smallest distance and (2)Largest distance from the surface
     int d_indices_range[N_curves][3], std_indices_range[N_curves][3];
+    double xyz_it[N_curves][3][N_atoms][3];
+
     for(i=0;i<N_curves;i++){
         d_indices_range[i][1]=1000;
         d_indices_range[i][2]=0;
@@ -572,11 +615,11 @@ int main(){
     #pragma omp parallel for
     for(int it=0;it<iterations;it++){
         //processor-specific variables
-
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         double xyz_priv[N_atoms][3], nominator, angle, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
+        double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
         //The calculations return the index for each of the structural variations:
@@ -666,15 +709,22 @@ int main(){
         if(check_constraints == 0){
         if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
             //Here we loop over the different curves to calculate the distance and STD index of that structure
-            //in the Chi^2 table
-            for(kk=0; kk<N_curves; kk++){
-                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
-                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
-                curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
-                curve_chi2_min[kk] = (curve_chi2[kk]<curve_chi2_min[kk])*curve_chi2[kk] + (curve_chi2[kk]>=curve_chi2_min[kk])*curve_chi2_min[kk] ;
+            //in the Chi^2 table and take a sum to calculate the total chi 2
+            double chi2=0.;
+
+                for(kk=0; kk<N_curves; kk++){
+                    d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
+                    std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
+
+                    if(metic[kk]==0){
+                        curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
+                     }
+                    else
+                        curve_chi2[kk] = calculate_curve_Chi2(scaling_factor[kk],order_parameter[kk],REDOR_det_index,REDOR_rec_index,xyz_priv,element,kk,curve_type[kk],REDORs,DSS0_lib,DSS0[kk],tmix[kk]);
+
+                    curve_chi2_min[kk] = (curve_chi2[kk]<curve_chi2_min[kk])*curve_chi2[kk] + (curve_chi2[kk]>=curve_chi2_min[kk])*curve_chi2_min[kk];
+                    chi2 = chi2 + curve_chi2[kk];
             }
-            //We then calculate the total Chi^2 of that structure
-            double chi2 = calc_chi2(X2, std_indices, d_indices, N_curves);
 
             //If this structure has a lower Chi^2 value, then the shared variable chi2_min is replaced
             //We then also replace the top_thread variable to know which thread currently has the best structure
@@ -685,7 +735,7 @@ int main(){
                 //We save the individual curve chi^2 values for this structure
                 //These will be used to determine cutoff values later on.
                 for(kk=0; kk<N_curves; kk++){
-                    best_struct_curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
+                    best_struct_curve_chi2[kk] = curve_chi2[kk];
                 }
 
                 //This structure overwrites xyz_best
@@ -744,6 +794,10 @@ int main(){
         remove(thread_filename);
     }
 
+    for(i=0;i<N_curves;i++){
+        copy_structure(N_atoms,xyz_best,xyz_it[i][0]);
+    }
+
     //surface atoms are added to the mol2 file for plotting purposes.
     add_surface(best_filename);
 
@@ -785,6 +839,7 @@ int main(){
         int check_chi2_threshold;
         double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
+        double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
         int z_position = int(floor(it/z_mod));
@@ -867,14 +922,22 @@ int main(){
         if(check_constraints == 0){
         if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
             check_chi2_threshold = 0;
+
+
             for(kk=0; kk<N_curves; kk++){
-                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);
-                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk, curve_type[kk]);
-                curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
-                    if(curve_chi2[kk]>curve_chi2_max[kk]){
+                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
+                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
+
+                if(metic[kk]==0)
+                    curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
+                else
+                    curve_chi2[kk] = calculate_curve_Chi2(scaling_factor[kk],order_parameter[kk],REDOR_det_index,REDOR_rec_index,xyz_priv,element,kk,curve_type[kk],REDORs,DSS0_lib,DSS0[kk],tmix[kk]);
+
+                if(curve_chi2[kk]>curve_chi2_max[kk])
                         check_chi2_threshold++;
-                    }
+
             }
+
             if(check_chi2_threshold == 0){
                 //If a structure is found it is overlaid (reoriented) onto the best structure
                 //The function also returns the RMSD between the two structures which can be used
@@ -891,12 +954,31 @@ int main(){
 
                     //The minimum and max distances are updated, if necessary, to print out the fitted curves ranges at the end.
                     for(kk=0; kk<N_curves; kk++){
-                        std_indices_range[kk][1] = (d_indices_range[kk][1] <= d_indices[kk])*std_indices_range[kk][1] + (d_indices_range[kk][1] > d_indices[kk])*std_indices[kk];
-                        std_indices_range[kk][2] = (d_indices_range[kk][2] >= d_indices[kk])*std_indices_range[kk][2] + (d_indices_range[kk][2] < d_indices[kk])*std_indices[kk];
-                        d_indices_range[kk][1] = (d_indices_range[kk][1] <= d_indices[kk])*d_indices_range[kk][1] + (d_indices_range[kk][1] > d_indices[kk])*d_indices[kk];
-                        d_indices_range[kk][2] = (d_indices_range[kk][2] >= d_indices[kk])*d_indices_range[kk][2] + (d_indices_range[kk][2] < d_indices[kk])*d_indices[kk];
-                    }
+                        if(d_indices[kk]>d_indices_range[kk][1]){
+                            std_indices_range[kk][1] = std_indices[kk];
+                            d_indices_range[kk][1] = d_indices[kk];
+                            copy_structure(N_atoms,xyz_priv,xyz_it[kk][1]);
+                        }
+                        else if(d_indices[kk]<d_indices_range[kk][2]){
+                            std_indices_range[kk][2] = std_indices[kk];
+                            d_indices_range[kk][2] = d_indices[kk];
+                            copy_structure(N_atoms,xyz_priv,xyz_it[kk][2]);
+                        }
 
+                        else if (d_indices[kk]==d_indices_range[kk][1]){
+                            if(std_indices_range[kk][1]>std_indices[kk]){
+                                std_indices_range[kk][1] = std_indices[kk];
+                                copy_structure(N_atoms,xyz_priv,xyz_it[kk][1]);
+                            }
+                        }
+
+                        else if (d_indices[kk]==d_indices_range[kk][2]){
+                            if(std_indices_range[kk][2]<std_indices[kk]){
+                                std_indices_range[kk][2] = std_indices[kk];
+                                copy_structure(N_atoms,xyz_priv,xyz_it[kk][2]);
+                            }
+                        }
+                    }
                 }
                 else{
                     other_structures++;
@@ -953,7 +1035,21 @@ int main(){
 
     //write out the fitted REDOR curve and ranges.
     printf("\n\nWriting the fitted RE(SP)DOR data to a file\n");
-    write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
+    if(meticulous==0)
+        write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
+    else{
+        double xyz_it2[9*N_curves*N_atoms];
+        for(i=0;i<N_curves;i++){
+            for(j=0;j<3;j++){
+                for(k=0;k<N_atoms;k++){
+                    for(l=0;l<3;l++){
+                        xyz_it2[l+k*3+j*3*N_atoms+i*9*N_atoms]=xyz_it[i][j][k][l];
+                    }
+                }
+            }
+        }
+        write_fits_meticulous(N_atoms,filename_base,N_curves,support,REDOR_det_index,REDOR_rec_index,xyz_it2,element,curve_filename,scaling_factor,order_parameter,Nspins,curve_type);
+    }
 
     printf("\nStructure determination finished successfully\n");
 }//end int main
