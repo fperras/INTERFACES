@@ -1,0 +1,9 @@
+10/26/22
+-Bug Fixes
+	-Fixed a bug that caused the innacurate calculation of distances in cases where there are 2 detected spins.
+	-Fixed a problem with the parallelism.
+-New Features
+	-Added the ability to circumvent the Gaussian distribution model of the detected nuclei's distance distribution.
+	 With this new mode the dephasing and chi^2 are calculated on-the-fly as the average dephasing for all detected
+         nuclei. This operation adds some additional overhead and is thus considerably slower, but more accurate. To use
+         this mode, the keyword 'meticulous' should be added to the input file.
