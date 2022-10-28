@@ -50,9 +50,6 @@ double calculate_curve_Chi2(double scaling_factor, double order_parameter, vecto
     if(curve_type==0){//surface-to-atom
         for(i=0; i<Npoints; i++){
             DSS0_calc=DSS0_full(tmix[i],scaling_factor,order_parameter,REDOR_det_index,xyz,curve_index,DSS0_lib);
-            if(curve_index==2){
-            }
-
             X2 = X2 + pow((DSS0[i]-DSS0_calc),2.) / pow((DSS0[i]),2.);
         }
         return X2;
