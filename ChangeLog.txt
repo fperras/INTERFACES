@@ -7,3 +7,12 @@
 	 With this new mode the dephasing and chi^2 are calculated on-the-fly as the average dephasing for all detected
          nuclei. This operation adds some additional overhead and is thus considerably slower, but more accurate. To use
          this mode, the keyword 'meticulous' should be added to the input file.
+
+11/09/22
+-Bug Fixes
+	-The previous version introduced issues with the printing of the fitted curves, these have been fixed.
+-New Features
+	-Major performance boost for the meticulous REDOR curve calculation code.
+	-Added the option to fit the REDOR data to multiple different surface conformers. This is activated by specifying 
+	 confidence level for the resolution of minor structures with the keyword "minor_structures_CL" followed by the 
+	 value in percent. This functionality is not fully tested and should be approached with caution.
