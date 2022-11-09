@@ -13,7 +13,7 @@ struct Bond{
     double dmax;
 };
 
-void get_affected_atoms(int N_rotatable_bonds, struct Bond *bond, vector< vector<int> > neighbors){
+void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> > &neighbors){
     //Same function of get_aff_atoms() but uses neighbors and should be faster.
 
     int found,start,check=0,i,j,k,l;
@@ -53,7 +53,7 @@ void get_affected_atoms(int N_rotatable_bonds, struct Bond *bond, vector< vector
     }//looping over rotatable bonds
 }
 
-void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *ori_atom_id, int *tar_atom_id){
+void get_aff_atoms(int Nbonds, int N_rotatable_bonds, Bond *bond, int *ori_atom_id, int *tar_atom_id){
     //This function is used to find all the atoms that are affected by the rotation of a particular bond
     //It looks down the chain in the direction of atom1->atom2 to find all the atoms down the chain and its branches.
 
@@ -103,7 +103,7 @@ void get_aff_atoms(int Nbonds, int N_rotatable_bonds, struct Bond *bond, int *or
     }
 }
 
-void get_internuclear_vector(double *bondvector, double *atom1, double *atom2){
+void get_internuclear_vector(double *bondvector, vector<double> &atom1, vector<double> &atom2){
     bondvector[0]=atom2[0]-atom1[0];
     bondvector[1]=atom2[1]-atom1[1];
     bondvector[2]=atom2[2]-atom1[2];

@@ -164,12 +164,12 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     int counter=0;
     #pragma omp parallel for
     for(i=0;i<N_atoms;i++){
-        double phi, theta, psi, R[3][3], rms;
+        double R[3][3], rms;
         int jj;
         rms_max[i][0]=rms_max[i][1]=rms_max[i][2]=0.;
         phi_max[i]=theta_max[i]=psi_max[i]=0.;
-        for(theta=0.;theta<Pi;theta=theta+Pi/180.){
-            for(psi=0.;psi<2.*Pi;psi=psi+Pi/180.){
+        for(double theta=0.;theta<Pi;theta=theta+Pi/180.){
+            for(double psi=0.;psi<2.*Pi;psi=psi+Pi/180.){
                 generate_rotation_matrix(R,0.,theta,psi);
                 rms=0.;
                 for(jj=0;jj<N_structures;jj++){

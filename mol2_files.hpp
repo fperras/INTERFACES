@@ -8,10 +8,10 @@
 #include <omp.h>
 using namespace std;
 
-int write_mol2(char *filename, int N_atoms, int N_bonds, int *atom_id, char (*element)[3], double (*xyz)[3],char (*atom_type)[8], int *bond_id, int *ori_atom_id, int *tar_atom_id, char (*bond_type)[20]) {
+int write_mol2(char *filename, int N_bonds, int *atom_id, char (*element)[3], vector< vector<double> > &xyz,char (*atom_type)[8], int *bond_id, int *ori_atom_id, int *tar_atom_id, char (*bond_type)[20]) {
     //This function writes out the structure given by xyz as a mol2 file.
     //All other variables in the mol2 file are taken from the initial reading of the starting structure
-    int i;
+    int i, N_atoms=xyz.size();
     FILE *out, *error_file;
     char error_filename[128];
 

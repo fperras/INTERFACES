@@ -6,11 +6,12 @@
 /*Use this version of the main.cpp file when using a cluster. It uses an argument for the input file rather than asking for it in the command line*/
 int main(int argc, char *argv[]){
     char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
-    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints = 0, meticulous=0;
+    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, found_structures=0;
     int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
-    double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5;
+    double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5, minor_structures_CL;
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
     vector<vector<int> > REDOR_det_index, REDOR_rec_index;
+    vector< REDOR_dataset > REDOR;
     FILE *input, *mol2_file, *error_file;
 
     printf("\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
@@ -61,6 +62,14 @@ int main(int argc, char *argv[]){
             meticulous=1;
             sprintf(keyword,"void");
         }
+
+        else if(strcmp(keyword, "minor_structures_CL")==0){
+            sscanf(buffer,"%s %lf",keyword, &minor_structures_CL);
+            found_structures=1;
+            meticulous=1; //the minor structures code uses the meticulous version of the REDOR calculations
+            sprintf(keyword,"void");
+        }
+
         else if(strcmp(keyword, "structure")==0){
             sscanf(buffer,"%s %s",keyword,mol2_filename);
             sprintf(keyword,"void");
@@ -130,15 +139,14 @@ int main(int argc, char *argv[]){
     fclose(input);
 
     //Knowing the quantity of these variables the arrays to contain their values are created and the file is read a second time to extract the values.
-    struct Bond bond[N_rotatable_bonds];
-    struct Constraint constraint[N_constraints];
-    int bond_index=0, Nconst=0, Nspins[N_curves], curve_type[N_curves], Nrecspins[N_curves];
-    char curve_filename[N_curves][120];
-    double scaling_factor[N_curves], order_parameter[N_curves];
+    Bond bond[N_rotatable_bonds];
+    Constraint constraint[N_constraints];
+    int bond_index=0, Nconst=0;
     input=fopen(input_filename,"r");
+    REDOR.resize(N_curves);
 
     for(i=0;i<N_curves;i++){
-        order_parameter[i]=1.;
+        REDOR[i].order_parameter=1.;
     }
 
     int counter=0;
@@ -171,16 +179,14 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }
             else if(strcmp(keyword, "surface-REDOR")==0){
-                REDOR_det_index.push_back(vector<int>());
-                REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",keyword,curve_filename[counter], &scaling_factor[counter]);
-                curve_type[counter]=0;
+                sscanf(buffer,"%s %s %lf",keyword,REDOR[counter].filename, &REDOR[counter].scaling_factor);
+                REDOR[counter].type=0;
 
-                if((scaling_factor[counter]>1.)||(scaling_factor[counter]<=0.)){
+                if((REDOR[counter].scaling_factor>1.)||(REDOR[counter].scaling_factor<=0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", REDOR[counter].scaling_factor,REDOR[counter].filename);
                     fclose(error_file);
-                    scaling_factor[counter]=1.0;
+                    REDOR[counter].scaling_factor=1.0;
                 }
 
                 counter++;
@@ -195,20 +201,19 @@ int main(int argc, char *argv[]){
                     ptr += strlen(word); //skip the keyword
                     j=0;
                     while((sscanf(ptr,"%s",word)) == 1) {
-                        REDOR_det_index[i].push_back(0);
-                        REDOR_rec_index[i].push_back(0);
-                        REDOR_det_index[i][j]=atoi(word)-1;
-                        REDOR_rec_index[i][j]=0;
+                        REDOR[i].detected.push_back(0);
+                        REDOR[i].recoupled.push_back(0);
+                        REDOR[i].detected[j]=atoi(word)-1;
+                        REDOR[i].recoupled[j]=0;
                         ptr = strstr(ptr, word);  // Find where the current word starts.
                         ptr += strlen(word); // Skip past the current word.
                         j++;
                     }
-                    Nspins[i]=j;
 
                 }
                 else{
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
+                    fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                     fclose(error_file);
                     exit(1);
                 }
@@ -217,16 +222,14 @@ int main(int argc, char *argv[]){
             }//surface_curve
 
             else if(strcmp(keyword, "intramolecular-REDOR")==0){
-                REDOR_det_index.push_back(vector<int>());
-                REDOR_rec_index.push_back(vector<int>());
-                sscanf(buffer,"%s %s %lf",keyword,curve_filename[counter], &scaling_factor[counter]);
-                curve_type[counter]=1;
+                sscanf(buffer,"%s %s %lf",keyword,&REDOR[counter].filename, &REDOR[counter].scaling_factor);
+                REDOR[counter].type=1;
 
-                if((scaling_factor[counter]>1.)||(scaling_factor[counter]<0.)){
+                if((REDOR[counter].scaling_factor>1.)||(REDOR[counter].scaling_factor<0.)){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", scaling_factor[counter],curve_filename[counter]);
+                    fprintf(error_file, "\nERROR: Illegal REDOR curve scaling factor of %lf in %s, set it to default (1.0) \n", REDOR[counter].scaling_factor,REDOR[counter].filename);
                     fclose(error_file);
-                    scaling_factor[counter]=1.0;
+                    REDOR[counter].scaling_factor=1.0;
                 }
                 j=0;
 
@@ -240,13 +243,12 @@ int main(int argc, char *argv[]){
                        ptr += strlen(word); //skip the keyword
                        j=0;
                         while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR_det_index[i].push_back(0);
-                            REDOR_det_index[i][j]=atoi(word)-1;
+                            REDOR[i].detected.push_back(0);
+                            REDOR[i].detected[j]=atoi(word)-1;
                             ptr = strstr(ptr, word);  // Find where the current word starts.
                             ptr += strlen(word); // Skip past the current word.
                             j++;
                         }
-                        Nspins[i]=j;
 
                         fgets(buffer, sizeof(buffer), input);
                         sscanf(buffer,"%s",keyword);
@@ -258,23 +260,22 @@ int main(int argc, char *argv[]){
                        ptr += strlen(word); //skip the keyword
                        j=0;
                         while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR_rec_index[i].push_back(0);
-                            REDOR_rec_index[i][j]=atoi(word)-1;
+                            REDOR[i].recoupled.push_back(0);
+                            REDOR[i].recoupled[j]=atoi(word)-1;
                             ptr = strstr(ptr, word);  // Find where the current word starts.
                             ptr += strlen(word); // Skip past the current word.
                             j++;
                         }
-                        Nrecspins[i]=j;
-                        if(Nrecspins[i]>1){
+                        if(REDOR[i].recoupled.size()>1){
                            error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nWARNING: calculated curve for %s might be inacurate at longer recoupling times, using root-sum-square dipole over recoupled spins.\n", curve_filename[counter]);
+                           fprintf(error_file, "\nWARNING: calculated curve for %s might be inacurate at longer recoupling times, using root-sum-square dipole over recoupled spins.\n", REDOR[counter].filename);
                            fclose(error_file);
                         }
 
                     }
                        else{
                            error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                            fclose(error_file);
                            exit(1);
                         }
@@ -287,13 +288,12 @@ int main(int argc, char *argv[]){
                        ptr += strlen(word); //skip the keyword
                        j=0;
                         while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR_rec_index[i].push_back(0);
-                            REDOR_rec_index[i][j]=atoi(word)-1;
+                            REDOR[i].recoupled.push_back(0);
+                            REDOR[i].recoupled[j]=atoi(word)-1;
                             ptr = strstr(ptr, word);  // Find where the current word starts.
                             ptr += strlen(word); // Skip past the current word.
                             j++;
                         }
-                        Nrecspins[i]=j;
 
                         fgets(buffer, sizeof(buffer), input);
                         sscanf(buffer,"%s",keyword);
@@ -305,18 +305,17 @@ int main(int argc, char *argv[]){
                        ptr += strlen(word); //skip the keyword
                        j=0;
                         while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR_det_index[i].push_back(0);
-                            REDOR_det_index[i][j]=atoi(word)-1;
+                            REDOR[i].detected.push_back(0);
+                            REDOR[i].detected[j]=atoi(word)-1;
                             ptr = strstr(ptr, word);  // Find where the current word starts.
                             ptr += strlen(word); // Skip past the current word.
                             j++;
                         }
-                        Nspins[i]=j;
 
                     }
                        else{
                            error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                            fclose(error_file);
                            exit(1);
                         }
@@ -324,7 +323,7 @@ int main(int argc, char *argv[]){
 
                     else{
                         error_file=fopen(error_filename,"a");
-                        fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", curve_filename[counter]);
+                        fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                         fclose(error_file);
                         exit(1);
                     }
@@ -413,7 +412,7 @@ int main(int argc, char *argv[]){
                     exit(1);
                 }
                 else{
-                    order_parameter[index-1]=S;
+                    REDOR[index-1].order_parameter=S;
                 }
                 sprintf(keyword,"void");
             }
@@ -427,7 +426,7 @@ int main(int argc, char *argv[]){
     }
     if(meticulous==1){
         for(i=0;i<N_curves;i++){
-            if(Nspins[i]>2)
+            if(REDOR[i].detected.size()>2)
                 metic[i]=1;
             else
                 metic[i]=0;
@@ -477,7 +476,8 @@ int main(int argc, char *argv[]){
 
     //Now knowing how many bonds and atoms there are the following variables are created.
     //Atom variables
-    double xyz[N_atoms][3];
+    vector< vector<double> > xyz;
+    xyz.resize(N_atoms, vector<double>(3,0.));
     char element[N_atoms][3], atom_type[N_atoms][8];
     int atom_id[N_atoms];
     //bond variables
@@ -523,34 +523,37 @@ int main(int argc, char *argv[]){
     //between the atom and the surface plane.  There is one table per atom.
     //In the special case where there are two atoms contributing to a given REDOR curve, the program will calculate the
     //average REDOR curve for the pair, otherwise a gaussian distribution is used.
-    vector< vector< vector<double> > > X2;
-    vector< vector<double> > DSS0;
-    vector< vector<double> > tmix;
-    vector< vector< vector<double> > > DSS0_lib;
     vector< vector<double> > REDORs;
-    X2.resize(N_curves, vector<vector<double> >(200,vector<double>(101,0.)));
+    for(i=0;i<REDOR.size();i++){
+        REDOR[i].X2.resize(200,vector<double>(101,0.));
+    }
 
-    DSS0.resize(N_curves);
-    tmix.resize(N_curves);
-    DSS0_lib.resize(N_curves);
     REDORs.resize(10000, vector<double>(9,0.));
     generate_REDORs(REDORs);
     printf("\n");
 
     for(i=0; i<N_curves; i++){
-        if(metic[i]==0)
-            create_X2_table(curve_filename[i], support, element[REDOR_det_index[i][0]],element[REDOR_rec_index[i][0]], X2[i],scaling_factor[i],order_parameter[i], Nspins[i], curve_type[i]);
-        else{
-            printf("Curve %s will be calculated on-the-fly\n",curve_filename[i]);
-            int Npoints=find_Npoints(curve_filename[i]);
-            DSS0[i].resize(Npoints, 0.);
-            tmix[i].resize(Npoints, 0.);
-            load_exp_curve(curve_filename[i], DSS0[i], tmix[i]);//populates DSS0 and tmix, the experimental data
-            if(curve_type[i]==0){
-                DSS0_lib[i].resize(250, vector<double>(200,0.));
-                load_simulations(support, element[REDOR_det_index[i][0]], DSS0_lib[i]); //populates the simulations for spin i in the case of surface-atom REDOR
-            }
+        int Npoints=find_Npoints(REDOR[i].filename);
+        REDOR[i].DSS0.resize(Npoints, 0.);
+        REDOR[i].tmix.resize(Npoints, 0.);
+        load_exp_curve(REDOR[i]);//populates DSS0 and tmix, the experimental data
+        REDOR[i].DSS0_lib.resize(250, vector<double>(200,0.));
+        for(j=0;j<N_atoms;j++){
+            sprintf(REDOR[i].det_element,"%s",element[REDOR[i].detected[0]]);
+            sprintf(REDOR[i].rec_element,"%s",element[REDOR[i].recoupled[0]]);
         }
+        if(REDOR[i].type==0)
+            load_simulations(support, REDOR[i]);
+        else{
+            REDOR[i].RDD1A=RDD_1A(REDOR[i].det_element, REDOR[i].rec_element);
+            REDOR[i].spin=spin(REDOR[i].rec_element);
+        }
+
+        if(metic[i]==0)
+            create_X2_table(REDOR[i],support);
+        else
+            printf("Curve %s will be calculated on-the-fly\n",REDOR[i].filename);
+
     }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
@@ -591,43 +594,47 @@ int main(int argc, char *argv[]){
     if(N_steps_Z==1)
         z_step=0.;
 
-    double xyz_ref[N_atoms][3];
+    vector< vector<double> > xyz_ref;
+    vector< vector<double> > xyz_best;
+    xyz_ref.resize(N_atoms, vector<double>(3,0.));
+    xyz_best.resize(N_atoms, vector<double>(3,0.));
     copy_structure(N_atoms,xyz,xyz_ref);
-    double xyz_best[N_atoms][3];
 
     //set chi2 values to a very high starting values to ensure a fit is found
     double chi2_min = 5000000;
-    double curve_chi2_min[N_curves], curve_chi2_max[N_curves], best_struct_curve_chi2[N_curves];
 
     for(i=0; i<N_curves; i++){
-        curve_chi2_min[i]=5000000;
-        best_struct_curve_chi2[i]=5000000;
+        REDOR[i].chi2_min=5000000;
+        REDOR[i].chi2_best=5000000;
     }
 
-    //These arrays to store the average  and stdev distances of the (0)best fit structure, (1)Smallest distance and (2)Largest distance from the surface
-    int d_indices_range[N_curves][3], std_indices_range[N_curves][3];
-    double xyz_it[N_curves][3][N_atoms][3];
+    vector< vector< vector< vector<double> > > > xyz_it;
+    xyz_it.resize(N_curves, vector< vector< vector<double> > > (3, vector< vector<double> > (N_atoms, vector<double>(3,0.))));
 
     for(i=0;i<N_curves;i++){
-        d_indices_range[i][1]=1000;
-        d_indices_range[i][2]=0;
-        std_indices_range[i][1]=1000;
-        std_indices_range[i][2]=0;
+        REDOR[i].d_index[1]=1000;
+        REDOR[i].d_index[2]=0;
+        REDOR[i].std_index[1]=1000;
+        REDOR[i].std_index[2]=0;
     }
 
     //A loop begins below where all variables are sampled to find the best-fit structure
     //We also store the distance and std indices for this structure in order to supply its
     //simulated curves.
+    printf("_____________________________________________________________________________________________________\n");
     printf("\nWill perform a search over a total of %d conformations\n",iterations);
-    printf("\nSearching for the best-fit structure\n");
+    printf("Searching for the best-fit structure\n");
+    printf("_____________________________________________________________________________________________________\n\n");
     int top_thread;
 
     #pragma omp parallel for
     for(int it=0;it<iterations;it++){
         //processor-specific variables
+        vector< vector<double> > xyz_priv;
+        xyz_priv.resize(N_atoms, vector<double>(3,0.));
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
-        double xyz_priv[N_atoms][3], nominator, angle, R[4][3], bondvector[3], step;
+        double nominator, angle, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
@@ -717,24 +724,24 @@ int main(int argc, char *argv[]){
         //one atom falls at a distance below collision_distance from the surface.  A distance of exactly
         //zero is ignored as this is assumed to be a surface atom.
         if(check_constraints == 0){
-        if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
+        if(!collisions(xyz_priv, neighbors, surface_collision_distance, interatomic_collision_distance)){
             //Here we loop over the different curves to calculate the distance and STD index of that structure
             //in the Chi^2 table and take a sum to calculate the total chi 2
             double chi2=0.;
 
                 for(kk=0; kk<N_curves; kk++){
-                    d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
-                    std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
+                    d_indices[kk] = get_distance_index(REDOR[kk],xyz_priv);
+                    std_indices[kk] = get_STDEV_index(REDOR[kk],xyz_priv);
 
                     if(metic[kk]==0){
-                        curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
+                        curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                      }
                     else
-                        curve_chi2[kk] = calculate_curve_Chi2(scaling_factor[kk],order_parameter[kk],REDOR_det_index,REDOR_rec_index,xyz_priv,element,kk,curve_type[kk],REDORs,DSS0_lib,DSS0[kk],tmix[kk]);
+                        curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,REDORs);
 
-                    curve_chi2_min[kk] = (curve_chi2[kk]<curve_chi2_min[kk])*curve_chi2[kk] + (curve_chi2[kk]>=curve_chi2_min[kk])*curve_chi2_min[kk];
+                    REDOR[kk].chi2_min = (curve_chi2[kk]<REDOR[kk].chi2_min)*curve_chi2[kk] + (curve_chi2[kk]>=REDOR[kk].chi2_min)*REDOR[kk].chi2_min;
                     chi2 = chi2 + curve_chi2[kk];
-            }
+                }
 
             //If this structure has a lower Chi^2 value, then the shared variable chi2_min is replaced
             //We then also replace the top_thread variable to know which thread currently has the best structure
@@ -745,7 +752,7 @@ int main(int argc, char *argv[]){
                 //We save the individual curve chi^2 values for this structure
                 //These will be used to determine cutoff values later on.
                 for(kk=0; kk<N_curves; kk++){
-                    best_struct_curve_chi2[kk] = curve_chi2[kk];
+                    REDOR[kk].chi2_best = curve_chi2[kk];
                 }
 
                 //This structure overwrites xyz_best
@@ -754,8 +761,8 @@ int main(int argc, char *argv[]){
 
                 //Lastly, we save the distance and std indices for this structure, to write the best-fit curve
                 for(kk=0; kk<N_curves; kk++){
-                    d_indices_range[kk][0]=d_indices[kk];
-                    std_indices_range[kk][0]=std_indices[kk];
+                    REDOR[kk].d_index[0]=d_indices[kk];
+                    REDOR[kk].std_index[0]=std_indices[kk];
                 }
 
                 //It is then saved as a mol2 file
@@ -763,7 +770,7 @@ int main(int argc, char *argv[]){
                 //which one is the actual best-fit structure
                 remove(min_chi2_output_filename);
                 sprintf(min_chi2_output_filename, "%s_%d_best.mol2", filename_base,omp_get_thread_num());
-                write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
+                write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
             }
 
             //This this structure has the new lowest Chi^2 value for a given curve, the existing value is replaced.
@@ -814,16 +821,16 @@ int main(int argc, char *argv[]){
     //the max_Chi2 function returns the highest allowable Chi^2 value given a minimum value and an error range
     //See numerical recipes in C for a description of the calculation.
     for(i=0; i<N_curves; i++){
-        curve_chi2_max[i] = max_Chi2(curve_chi2_min[i], threshold_accuracy/100.);
+        REDOR[i].chi2_max = max_Chi2(REDOR[i].chi2_min, threshold_accuracy/100.);
     }
 
     //If a cutoff value excludes the best fit structure, the cutoff is replaced with that from the best fit structure
     for(i=0; i<N_curves; i++){
-        if(curve_chi2_max[i]<best_struct_curve_chi2[i]){
+        if(REDOR[i].chi2_max<REDOR[i].chi2_best){
             error_file=fopen(error_filename,"a");
             fprintf(error_file, "\nNOTE: Best-fit structure is not within experimental error for curve %d. Cutoff values were altered for this curve\n", i);
             fclose(error_file);
-            curve_chi2_max[i] = best_struct_curve_chi2[i];
+            REDOR[i].chi2_max = REDOR[i].chi2_best;
         }
     }
 
@@ -834,7 +841,9 @@ int main(int argc, char *argv[]){
     int acceptable_structures = 0;
     int other_structures = 0;
     int max_accept_failsafe = 0;
+    printf("_____________________________________________________________________________________________________\n");
     printf("\nFinding all structures that agree with experiment\n");
+    printf("_____________________________________________________________________________________________________\n\n");
 
     #pragma omp parallel for
     for(int it=0;it<iterations;it++){
@@ -843,11 +852,12 @@ int main(int argc, char *argv[]){
             it = iterations;
             max_accept_failsafe = 1;
         }
-
+        vector< vector<double> > xyz_priv;
+        xyz_priv.resize(N_atoms, vector<double>(3,0.));
         int ii, jj, kk, bond_position[N_rotatable_bonds];
         int d_indices[N_curves], std_indices[N_curves];
         int check_chi2_threshold;
-        double xyz_priv[N_atoms][3], nominator, angle, deviation, R[4][3], bondvector[3], step;
+        double nominator, angle, deviation, R[4][3], bondvector[3], step;
         char min_chi2_output_filename[128];
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
@@ -901,7 +911,6 @@ int main(int argc, char *argv[]){
 
         int check_constraints=0;
         double value;
-        ii=0;
 
         for(ii=0;ii<N_constraints;ii++){
             switch (constraint[ii].type){
@@ -930,22 +939,23 @@ int main(int argc, char *argv[]){
         }
 
         if(check_constraints == 0){
-        if(!collisions(xyz_priv, neighbors, N_atoms, surface_collision_distance, interatomic_collision_distance)){
+        if(!collisions(xyz_priv, neighbors, surface_collision_distance, interatomic_collision_distance)){
             check_chi2_threshold = 0;
 
 
             for(kk=0; kk<N_curves; kk++){
-                d_indices[kk] = get_distance_index(REDOR_det_index,REDOR_rec_index, xyz_priv,kk,curve_type[kk]);
-                std_indices[kk] = get_STDEV_index(REDOR_det_index,REDOR_rec_index, xyz_priv, kk,curve_type[kk]);
+                d_indices[kk] = get_distance_index(REDOR[kk],xyz_priv);
+                std_indices[kk] = get_STDEV_index(REDOR[kk],xyz_priv);
 
                 if(metic[kk]==0)
-                    curve_chi2[kk] = X2[kk][d_indices[kk]][std_indices[kk]];
+                    curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                 else
-                    curve_chi2[kk] = calculate_curve_Chi2(scaling_factor[kk],order_parameter[kk],REDOR_det_index,REDOR_rec_index,xyz_priv,element,kk,curve_type[kk],REDORs,DSS0_lib,DSS0[kk],tmix[kk]);
+                    curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,REDORs);
 
-                if(curve_chi2[kk]>curve_chi2_max[kk])
-                        check_chi2_threshold++;
-
+                if(curve_chi2[kk]>REDOR[kk].chi2_max){
+                    check_chi2_threshold++;
+                    break;
+                }
             }
 
             if(check_chi2_threshold == 0){
@@ -960,31 +970,31 @@ int main(int argc, char *argv[]){
                     acceptable_structures++;
                     sprintf(min_chi2_output_filename, "%s_struct%d.mol2", filename_base, acceptable_structures);
                     printf("(%d) Acceptable structure found\n", acceptable_structures);
-                    write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
+                    write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
 
                     //The minimum and max distances are updated, if necessary, to print out the fitted curves ranges at the end.
                     for(kk=0; kk<N_curves; kk++){
-                        if(d_indices[kk]>d_indices_range[kk][1]){
-                            std_indices_range[kk][1] = std_indices[kk];
-                            d_indices_range[kk][1] = d_indices[kk];
+                        if(d_indices[kk]<REDOR[kk].d_index[1]){
+                            REDOR[kk].std_index[1] = std_indices[kk];
+                            REDOR[kk].d_index[1] = d_indices[kk];
                             copy_structure(N_atoms,xyz_priv,xyz_it[kk][1]);
                         }
-                        else if(d_indices[kk]<d_indices_range[kk][2]){
-                            std_indices_range[kk][2] = std_indices[kk];
-                            d_indices_range[kk][2] = d_indices[kk];
+                        else if(d_indices[kk]>REDOR[kk].d_index[2]){
+                            REDOR[kk].std_index[2] = std_indices[kk];
+                            REDOR[kk].d_index[2] = d_indices[kk];
                             copy_structure(N_atoms,xyz_priv,xyz_it[kk][2]);
                         }
 
-                        else if (d_indices[kk]==d_indices_range[kk][1]){
-                            if(std_indices_range[kk][1]>std_indices[kk]){
-                                std_indices_range[kk][1] = std_indices[kk];
+                        else if (d_indices[kk]==REDOR[kk].d_index[1]){
+                            if(REDOR[kk].std_index[1]>std_indices[kk]){
+                                REDOR[kk].std_index[1] = std_indices[kk];
                                 copy_structure(N_atoms,xyz_priv,xyz_it[kk][1]);
                             }
                         }
 
-                        else if (d_indices[kk]==d_indices_range[kk][2]){
-                            if(std_indices_range[kk][2]<std_indices[kk]){
-                                std_indices_range[kk][2] = std_indices[kk];
+                        else if (d_indices[kk]==REDOR[kk].d_index[2]){
+                            if(REDOR[kk].std_index[2]<std_indices[kk]){
+                                REDOR[kk].std_index[2] = std_indices[kk];
                                 copy_structure(N_atoms,xyz_priv,xyz_it[kk][2]);
                             }
                         }
@@ -994,7 +1004,7 @@ int main(int argc, char *argv[]){
                     other_structures++;
                     sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", filename_base, other_structures);
                     printf("(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
-                    write_mol2(min_chi2_output_filename, N_atoms, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
+                    write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
                 }
             }
         }}
@@ -1032,34 +1042,261 @@ int main(int argc, char *argv[]){
     }
 
     //Creating overlay and probability ellipsoids..
+    printf("_____________________________________________________________________________________________________\n");
     printf("\nOverlaying structures\n");
 
     //for primary structures
     compile_mol2_files(filename_base, acceptable_structures);
-
-    printf("\nCalculating probability ellipsoids");
+    printf("_____________________________________________________________________________________________________\n");
     create_cif(overlay_filename, N_atoms+5);
 
     //for all structures
     compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
 
     //write out the fitted REDOR curve and ranges.
-    printf("\n\nWriting the fitted RE(SP)DOR data to a file\n");
+    printf("\n_____________________________________________________________________________________________________\n");
+    printf("\nWriting the fitted RE(SP)DOR data to a file\n");
     if(meticulous==0)
-        write_fits(d_indices_range, std_indices_range, filename_base, N_curves, support, REDOR_det_index, REDOR_rec_index, element,curve_filename, scaling_factor,order_parameter, Nspins, curve_type);
-    else{
-        double xyz_it2[9*N_curves*N_atoms];
-        for(i=0;i<N_curves;i++){
-            for(j=0;j<3;j++){
-                for(k=0;k<N_atoms;k++){
-                    for(l=0;l<3;l++){
-                        xyz_it2[l+k*3+j*3*N_atoms+i*9*N_atoms]=xyz_it[i][j][k][l];
+        write_fits(filename_base,support,REDOR);
+    else
+        write_fits_meticulous(filename_base,support,REDOR,xyz_it);
+    printf("_____________________________________________________________________________________________________\n");
+    printf("\nStructure determination finished successfully\n");
+
+    //Here starts the code for the minor structure search.
+    //The code first calculates the dephasing levels form the best structure
+    //It then performs a similar structure search in which calculated dephasing levels are the sum of those from the distinct species
+    //For a minor species to be accepted, the calculated dephasing for each curve must be within error and the total dephasing much be
+    //significantly low as to exclude the possibility of there being only the prior set of structures.
+    if(found_structures>0){
+        printf("_____________________________________________________________________________________________________\n");
+        printf("\nBeginning a search for up to %d minor surface species\n", found_structures);
+
+        vector< vector< vector<double> > > xyz_minor;
+        xyz_minor.resize(found_structures, vector< vector<double> > (N_atoms, vector<double>(3,0.)));
+        vector<double> weights(1,1.);
+        double new_weight;
+        copy_structure(N_atoms,xyz_best,xyz_minor[0]);
+
+        //This will be the total Chi2 threshold that the combined structure will have to beat
+        double Chi2_limit, previous_Chi2=0., current_best_Chi2;
+        for(i=0; i<N_curves; i++){
+            previous_Chi2+= REDOR[i].chi2_best;
+        }
+        current_best_Chi2=previous_Chi2;
+        Chi2_limit = max_Chi2_multi(previous_Chi2,minor_structures_CL/100.);
+
+        for(i=0; i<N_curves; i++){
+            int Npoints=REDOR[i].DSS0.size();
+            REDOR[i].DSS0sim_prev.resize(Npoints, 0.);
+            REDOR[i].DSS0sim_new.resize(Npoints, 0.);
+            precalculate_dephasing(REDOR[i].DSS0sim_prev,REDOR[i],xyz_best,REDORs);
+        }
+
+        double current_CL=0.;
+        do{//loop searching for minor surface species.
+            xyz_minor.push_back(xyz_best);
+            weights.push_back(0.);
+            int found=0;
+            new_weight=0.;
+            printf("_____________________________________________________________________________________________________\n");
+            printf("\nSearching for surface species number %d\n",found_structures+1);
+            printf("Looking to reduce Chi2 from %lf to %lf\n",previous_Chi2,Chi2_limit);
+            for(i=0;i<N_curves;i++){
+                if(Chi2_limit>REDOR[i].chi2_max)
+                    REDOR[i].chi2_max=Chi2_limit;
+            }
+
+            #pragma omp parallel for
+            for(int it=0;it<iterations;it++){
+                vector< vector<double> > xyz_priv;
+                xyz_priv.resize(N_atoms, vector<double>(3,0.));
+                int ii, jj, kk, bond_position[N_rotatable_bonds];
+                int check_chi2_threshold;
+                double nominator, angle, R[4][3], bondvector[3], step;
+                double curve_chi2[N_curves][10];
+                copy_structure(N_atoms,xyz_ref,xyz_priv);
+
+                int z_position = int(floor(it/z_mod));
+                int y_position = int(floor((it-z_position*z_mod)/y_mod));
+                int x_position = int(floor((it-z_position*z_mod-y_position*y_mod)/x_mod));
+
+                for(jj=N_rotatable_bonds-1;jj>=0;jj--){
+                    nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
+                    for(kk=jj+1; kk<N_rotatable_bonds;kk++){
+                        nominator=nominator - bond_position[kk] * bond[kk].mod;
+                    }
+                    bond_position[jj] = int(floor(nominator/bond[jj].mod));
+                }
+
+                translate_molecule_Z(N_atoms,xyz_priv,z_step*z_position+z_min);
+                rotate_molecule_around_Y(N_atoms,xyz_priv,y_angle*y_position);
+                rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
+
+                for(jj=N_rotatable_bonds-1;jj>=0;jj--){
+                    if(bond[jj].type==0){//bond rotation
+                        angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
+                        generate_bond_rot_matrix(R, xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2], angle);
+                        //rotating all of atoms involved around the bond
+                        for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                            rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                        }
+                    }
+                    else if(bond[jj].type==1){//bond elongation
+                        get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                        step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
+                        bondvector[0]=bondvector[0]*step;
+                        bondvector[1]=bondvector[1]*step;
+                        bondvector[2]=bondvector[2]*step;
+                        for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                            translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                            translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                            translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                        }
+                    }
+                    else{//bond angle
+                        angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                        generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                        //rotating all of atoms involved around the bond
+                        for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                        }
                     }
                 }
-            }
-        }
-        write_fits_meticulous(N_atoms,filename_base,N_curves,support,REDOR_det_index,REDOR_rec_index,xyz_it2,element,curve_filename,scaling_factor,order_parameter,Nspins,curve_type);
-    }
 
-    printf("\nStructure determination finished successfully\n");
+                int check_constraints=0;
+                double value;
+
+                for(ii=0;ii<N_constraints;ii++){
+                    switch (constraint[ii].type){
+                        case 0 : //distance
+                            value = distance_calc(xyz_priv[constraint[ii].atom1],xyz_priv[constraint[ii].atom2]);
+                            break;
+                        case 1: //angle
+                            value = angle_calc(xyz_priv[constraint[ii].atom1],xyz_priv[constraint[ii].atom2],xyz_priv[constraint[ii].atom3]);
+                            break;
+                        case 2: //dihedral
+                            value = dihedral_calc(xyz_priv[constraint[ii].atom1],xyz_priv[constraint[ii].atom2],xyz_priv[constraint[ii].atom3],xyz_priv[constraint[ii].atom4]);
+                            break;
+                        case 3: //surface distance
+                            value=xyz_priv[constraint[ii].atom1][2];
+                            break;
+                    }//end switch
+
+                    if(value > constraint[ii].maximum){
+                        check_constraints=1;
+                        break;
+                    }
+                    if(value < constraint[ii].minimum){
+                        check_constraints=1;
+                        break;
+                    }
+                }
+
+                if(check_constraints == 0){
+                if(!collisions(xyz_priv, neighbors, surface_collision_distance, interatomic_collision_distance)){
+                    check_chi2_threshold = 0;
+
+                    double chi2=0;
+                    for(kk=0; kk<N_curves; kk++){
+                        if(calculate_curve_Chi2_multi(curve_chi2[kk],REDOR[kk],xyz_priv,REDORs)>REDOR[kk].chi2_max){
+                            check_chi2_threshold++;
+                            break;
+                        }
+                    }
+
+                    if(check_chi2_threshold == 0){
+                        for(jj=0;jj<10;jj++){
+                            chi2=0.;
+                            check_chi2_threshold=0;
+                            for(kk=0;kk<N_curves;kk++){
+                                if(curve_chi2[kk][jj]>REDOR[kk].chi2_max){
+                                    check_chi2_threshold++;
+                                    break;
+                                }
+                                chi2 = chi2 + curve_chi2[kk][jj];
+                            }
+                            if(check_chi2_threshold == 0){
+                                if(chi2<current_best_Chi2){
+                                    current_best_Chi2=chi2;
+                                    current_CL=return_CI(previous_Chi2,chi2)*100;
+                                    printf("\nChi2 reduced to %lf; corresponding to a confidence level of %.1lf percent",chi2,current_CL);
+                                }
+                                if(chi2<Chi2_limit){
+                                    Chi2_limit=chi2;
+                                    copy_structure(N_atoms,xyz_priv,xyz_minor[found_structures]);
+                                    found=1;
+                                    new_weight=0.05+0.05*jj;
+                                    printf("  (secondary structure found!)");
+                                }
+                            }
+                            else
+                                check_chi2_threshold=0;
+                        }
+                    }
+                }}
+            }
+
+            if(found !=0){
+                for(i=0;i<found_structures;i++){
+                    double deviation = overlay_structures(N_atoms, xyz_minor[i], xyz_minor[found_structures]);
+                    if(deviation<cutoff_RMSD){
+                        printf("\nMinor structure was found to be within error of the main structure.");
+                        found=0;
+                        break;
+            }}}
+
+            found_structures++;
+            weights[found_structures-1]=new_weight;
+            for(i=0;i<found_structures-1;i++){
+                weights[i]=weights[i]*(1.-new_weight);
+            }
+
+            if(found==0)
+                break;
+
+            for(i=0; i<N_curves; i++){
+                int Npoints=find_Npoints(REDOR[i].filename);
+                precalculate_dephasing(REDOR[i].DSS0sim_new,REDOR[i],xyz_minor[found_structures-1],REDORs);
+                for(j=0;j<Npoints;j++){
+                    REDOR[i].DSS0sim_prev[j]=(1.-new_weight)*REDOR[i].DSS0sim_prev[j] + new_weight*REDOR[i].DSS0sim_new[j];
+                }
+            }
+            previous_Chi2=Chi2_limit;
+            Chi2_limit=max_Chi2_multi(Chi2_limit,minor_structures_CL/100.);
+            printf("\nIdentified surface species number %d\n", found_structures);
+        }while(true);
+
+        for(i=0;i<found_structures;i++){
+            char conformer_filename[128];
+            sprintf(conformer_filename, "%s_conformer_%d_%.2lf.mol2",filename_base,i+1,weights[i]);
+            write_mol2(conformer_filename, N_bonds, atom_id, element, xyz_minor[i], atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
+            add_surface(conformer_filename);
+        }
+        printf("\n_____________________________________________________________________________________________________\n");
+        printf("\nThe search for minor surface species has completed.\n");
+        printf("_____________________________________________________________________________________________________\n");
+        if(found_structures>1){
+            printf("\nINTERFACES was able to improve the quality of the (%.1lf percent confidence interval)\n",current_CL);
+            printf("REDOR fits with the inclusion of %d conformers. \n",found_structures);
+            printf("These structures have been saved, inspect them to ensure that they are truly different.\n");
+            printf("\nThe following are the weights of the %d conformers:",found_structures);
+            for(i=0;i<found_structures;i++){
+                printf("\nConformer %d has a weight of %.2lf",i+1,weights[i]);
+            }
+
+            //write out the fitted REDOR curve and ranges.
+            printf("\n_____________________________________________________________________________________________________\n");
+            printf("\nWriting the fitted RE(SP)DOR data to a file\n");
+            write_fits_multi(found_structures,filename_base,REDOR,xyz_minor,weights);
+        }
+        else
+            printf("\nINTERFACES couldn't identify minor surface species within the specified %.1lf percent confidence interval\n",minor_structures_CL);
+
+        printf("_____________________________________________________________________________________________________\n");
+        printf("\nMinor structure determination finished successfully\n");
+        printf("_____________________________________________________________________________________________________\n");
+    }//end of minor structure search
+
+    return 0;
 }//end int main

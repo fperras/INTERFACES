@@ -1,6 +1,6 @@
 #include "on-the-fly-REDOR.hpp"
 
-void center_structure(int N_atoms, double (*xyz)[3]){
+void center_structure(int N_atoms, vector< vector<double> > &xyz){
 //This function will recenter the structure at the origin on the surface to enable optimal viewing of the overlays
     int i;
     double x_ave=0., y_ave=0.;
@@ -18,7 +18,7 @@ void center_structure(int N_atoms, double (*xyz)[3]){
     }
 }
 
-double rmsd(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
+double rmsd(int N_atoms, vector< vector<double> > &xyz_ref, vector< vector<double> > &xyz){
     //returns the rmsd between two structures
     //used to overlay two structures
     int i;
@@ -32,7 +32,7 @@ double rmsd(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
     return RMSD;
 }
 
-double overlay_structures(int N_atoms, double (*xyz_ref)[3], double (*xyz)[3]){
+double overlay_structures(int N_atoms, vector< vector<double> > &xyz_ref, vector< vector<double> > &xyz){
     //This function will reorient structure xyz so as to minimize the RMSD with xyz_ref
     //The function also returns this RMSD which can be used to exclude certain structured
     //from an overlaid mol2/cif file.

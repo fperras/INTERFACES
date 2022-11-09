@@ -57,6 +57,20 @@ double max_Chi2(double Chi2_min, double confidence_interval){
     return (2.*pow(inverf(confidence_interval),2.)+1.)*Chi2_min;
 }
 
+double max_Chi2_multi(double Chi2_best, double confidence_interval){
+    //function to calculate the max Chi^2 allowed for a given confidence interval
+    //Note that the confidence interval is defined as a decimal, not a percentage
+    //This function differs in that it defines the Chi^2 level required to exclude
+    //a given Chi^2 value.
+    return Chi2_best/(2.*pow(inverf(confidence_interval),2.)+1.);
+}
+
+double return_CI(double Chi2_large, double Chi2_small){
+    //This function uses the Chi^2 minimum and a given Chi^2 value to return the
+    //corresponding confidence interval.
+    return erf(sqrt((Chi2_large/Chi2_small-1.)/2.));
+}
+
 void generate_gaussians(vector< vector<double> > &gaussians){
     //The function pre-computes a series of gaussian distributions of distances
     //the vector is formatted with the first index for offset distance, in 0.1A increments from -20 to +20

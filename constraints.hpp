@@ -19,7 +19,7 @@ struct Constraint{
     int type; //0 for distance, 1 for angle, 2 for dihedral, 3 for surface_distance
 };
 
-double distance_sq(double *atom1, double *atom2){
+double distance_sq(vector<double> &atom1, vector<double> &atom2){
     //function that returns the squared distance.
     //In enables the calculation of collisions without having to call a sqrt
     double x=(atom1[0]-atom2[0]);
@@ -28,7 +28,7 @@ double distance_sq(double *atom1, double *atom2){
     return x*x+y*y+z*z;
 }
 
-double distance_calc(double *atom1, double *atom2){
+double distance_calc(vector<double> &atom1, vector<double> &atom2){
     //returns the distance between two atoms
     double x=(atom1[0]-atom2[0]);
     double y=(atom1[1]-atom2[1]);
@@ -36,7 +36,7 @@ double distance_calc(double *atom1, double *atom2){
     return sqrt(x*x+y*y+z*z);
 }
 
-double angle_calc(double *atom1, double *atom2, double *atom3){
+double angle_calc(vector<double> &atom1, vector<double> &atom2, vector<double> &atom3){
     //returns the bond angle between 3 atoms;
     double vector1[3], vector2[3], length, dot=0.;
     int i;
@@ -59,10 +59,13 @@ double angle_calc(double *atom1, double *atom2, double *atom3){
     return acos(dot)*180./Pi;
 }
 
-double dihedral_calc(double *atom1, double *atom2, double *atom3, double *atom4){
+double dihedral_calc(vector<double> &atom1, vector<double> &atom2, vector<double> &atom3, vector<double> &atom4){
     //returns the dihedral angle between 4 atoms.
-    double vector1[3], vector2[3], vector3[3], normal1[3], normal2[3], origin[3], dihedral, triple=0;
+    double vector1[3], vector2[3], vector3[3], dihedral, triple=0;
     int i;
+    vector<double> normal1(3);
+    vector<double> normal2(3);
+    vector<double> origin(3);
 
     for(i=0;i<3;i++){
         vector1[i]=atom1[i]-atom2[i];
@@ -96,10 +99,10 @@ int not_bonded(vector< vector<int> > neighbors, int atom1, int atom2){
     return bonded;
 }
 
-int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, double surface_collision_distance, double interatomic_collision_distance){
+int collisions(vector< vector<double> > &xyz, vector< vector<int> > neighbors, double surface_collision_distance, double interatomic_collision_distance){
     //This function returns true if there is either an interatomic (< 1A) or surface-atom collision.
     //A surface-atom distance of exactly zero is ignored as it is assumed to be a surface atom.
-    int i,j;
+    int i,j, N_atoms=xyz.size();
     double d,x,y,z;
 
     for(i=0;i<N_atoms;i++){
@@ -108,7 +111,6 @@ int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, d
         if(xyz[i][2]!=0.0)
             return 1;
         }
-
     for(i=0;i<N_atoms;i++){
         for(j=i+1;j<N_atoms; j++){
             x=xyz[i][0]-xyz[j][0];
@@ -132,22 +134,5 @@ int collisions(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, d
                 return 1;
     }
 }
-    return 0;
-}
-
-int collisions_old(double (*xyz)[3], vector< vector<int> > neighbors, int N_atoms, double surface_collision_distance, double interatomic_collision_distance){
-    //This function returns true if there is either an interatomic (< 1A) or surface-atom collision.
-    //A surface-atom distance of exactly zero is ignored as it is assumed to be a surface atom.
-    int i,j;
-
-    for(i=0;i<N_atoms;i++){
-        if(xyz[i][2]<surface_collision_distance){
-            if(xyz[i][2]!=0.0)
-            return 1;
-        }
-        for(j=i+1;j<N_atoms; j++){
-            if(distance_calc(xyz[i],xyz[j])<1.0)
-                return 1;
-    }}
     return 0;
 }
