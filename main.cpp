@@ -12,7 +12,26 @@ int main(){
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
     vector<vector<int> > REDOR_det_index, REDOR_rec_index;
     vector< REDOR_dataset > REDOR;
-    FILE *input, *mol2_file, *error_file;
+    FILE *input, *mol2_file, *error_file, *log_file;
+    log_file=fopen("log.txt","w");
+
+    fprintf(log_file,"\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
+    fprintf(log_file,"  888   8888b   888     888     888        888   Y88b 888           d88888 d88P  Y88b 888        d88P  Y88b \n");
+    fprintf(log_file,"  888   88888b  888     888     888        888    888 888          d88P888 888    888 888        Y88b.      \n");
+    fprintf(log_file,"  888   888Y88b 888     888     8888888    888   d88P 8888888     d88P 888 888        8888888     ^Y888b.   \n");
+    fprintf(log_file,"  888   888 Y88b888     888     888        8888888P^  888        d88P  888 888        888            ^Y88b. \n");
+    fprintf(log_file,"  888   888  Y88888     888     888        888 T88b   888       d88P   888 888    888 888              ^888 \n");
+    fprintf(log_file,"  888   888   Y8888     888     888        888  T88b  888      d8888888888 Y88b  d88P 888        Y88b  d88P \n");
+    fprintf(log_file,"8888888 888    Y888     888     8888888888 888   T88b 888     d88P     888  ^Y8888P^  8888888888  ^Y8888P^  \n");
+
+    fprintf(log_file,"\n(Interpret NMR To Elucidate or Reconstruct the Full Atomistic Configurations of External Surfaces)\n");
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
+    fprintf(log_file,"\nWritten by James Cunningham and Frederic A. Perras\n");
+    fprintf(log_file,"US DOE, Ames National Laboratory, 2022\n");
+    fprintf(log_file,"\nIf used for a publication, please cite: J. Magn. Reson. Open 2022, 12-13, 100066.\n");
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+
 
     printf("\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
     printf("  888   8888b   888     888     888        888   Y88b 888           d88888 d88P  Y88b 888        d88P  Y88b \n");
@@ -118,7 +137,15 @@ int main(){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
         }
+        else if(strcmp(keyword, "stretch_symmetric")==0){
+            N_rotatable_bonds++;
+            sprintf(keyword,"void");
+        }
         else if(strcmp(keyword, "bend")==0){
+            N_rotatable_bonds++;
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "bend_symmetric")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
         }
@@ -160,12 +187,29 @@ int main(){
                 bond_index++;
                 sprintf(keyword,"void");
             }
+            else if(strcmp(keyword, "stretch_symmetric")==0){
+                sscanf(buffer, "%s %d %d %lf %lf %d", keyword, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                bond[bond_index].atom1=bond[bond_index].atom1-1;
+                bond[bond_index].atom2=bond[bond_index].atom2-1;
+                bond[bond_index].type=4;
+                bond_index++;
+                sprintf(keyword,"void");
+            }
             else if(strcmp(keyword, "bend")==0){
                 sscanf(buffer, "%s %d %d %d %lf %lf %d", keyword, &bond[bond_index].atom0, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
                 bond[bond_index].atom0=bond[bond_index].atom0-1;
                 bond[bond_index].atom1=bond[bond_index].atom1-1;
                 bond[bond_index].atom2=bond[bond_index].atom2-1;
                 bond[bond_index].type=2;
+                bond_index++;
+                sprintf(keyword,"void");
+            }
+            else if(strcmp(keyword, "bend_symmetric")==0){
+                sscanf(buffer, "%s %d %d %d %lf %lf %d", keyword, &bond[bond_index].atom0, &bond[bond_index].atom1, &bond[bond_index].atom2, &bond[bond_index].dmin, &bond[bond_index].dmax, &bond[bond_index].N_steps);
+                bond[bond_index].atom0=bond[bond_index].atom0-1;
+                bond[bond_index].atom1=bond[bond_index].atom1-1;
+                bond[bond_index].atom2=bond[bond_index].atom2-1;
+                bond[bond_index].type=3;
                 bond_index++;
                 sprintf(keyword,"void");
             }
@@ -522,6 +566,7 @@ int main(){
     REDORs.resize(10000, vector<double>(9,0.));
     generate_REDORs(REDORs);
     printf("\n");
+    fprintf(log_file,"\n");
 
     for(i=0; i<N_curves; i++){
         int Npoints=find_Npoints(REDOR[i].filename);
@@ -540,11 +585,14 @@ int main(){
             REDOR[i].spin=spin(REDOR[i].rec_element);
         }
 
-        if(metic[i]==0)
+        if(metic[i]==0){
             create_X2_table(REDOR[i],support);
-        else
+            fprintf(log_file,"Creating Chi2 table for %s\n",REDOR[i].filename);
+        }
+        else{
             printf("Curve %s will be calculated on-the-fly\n",REDOR[i].filename);
-
+            fprintf(log_file,"Curve %s will be calculated on-the-fly\n",REDOR[i].filename);
+        }
     }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
@@ -616,6 +664,11 @@ int main(){
     printf("\nWill perform a search over a total of %d conformations\n",iterations);
     printf("Searching for the best-fit structure\n");
     printf("_____________________________________________________________________________________________________\n\n");
+
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nWill perform a search over a total of %d conformations\n",iterations);
+    fprintf(log_file,"Searching for the best-fit structure\n");
+    fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
     int top_thread;
 
     #pragma omp parallel for
@@ -670,12 +723,48 @@ int main(){
                     translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
                 }
             }
-            else{//bond angle
+            else if(bond[jj].type==4){//bond elongation
+                get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
+                step=step/2.;
+                bondvector[0]=bondvector[0]*step;
+                bondvector[1]=bondvector[1]*step;
+                bondvector[2]=bondvector[2]*step;
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                }
+                bondvector[0]=bondvector[0]*-1.;
+                bondvector[1]=bondvector[1]*-1.;
+                bondvector[2]=bondvector[2]*-1.;
+                for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[2]);
+                }
+            }
+            else if(bond[jj].type==2){//bond angle
                 angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
                 generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
                 //rotating all of atoms involved around the bond
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
                     rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+            }
+            else{//bend_symmetric
+                angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                angle=angle/2.;
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+                angle=-1.*angle;
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom2[ii]], R);
                 }
             }
         }
@@ -749,6 +838,7 @@ int main(){
                 //This structure overwrites xyz_best
                 copy_structure(N_atoms,xyz_priv,xyz_best);
                 printf("New Chi2 minimum at %lf\n",chi2_min);
+                fprintf(log_file,"New Chi2 minimum at %lf\n",chi2_min);
 
                 //Lastly, we save the distance and std indices for this structure, to write the best-fit curve
                 for(kk=0; kk<N_curves; kk++){
@@ -836,6 +926,10 @@ int main(){
     printf("\nFinding all structures that agree with experiment\n");
     printf("_____________________________________________________________________________________________________\n\n");
 
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nFinding all structures that agree with experiment\n");
+    fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
+
     #pragma omp parallel for
     for(int it=0;it<iterations;it++){
         if((acceptable_structures+other_structures)>max_acceptable_struct){
@@ -890,12 +984,48 @@ int main(){
                     translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
                 }
             }
-            else{//bond angle
+            else if(bond[jj].type==4){//bond elongation symmetric
+                get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
+                step=step/2.;
+                bondvector[0]=bondvector[0]*step;
+                bondvector[1]=bondvector[1]*step;
+                bondvector[2]=bondvector[2]*step;
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                }
+                bondvector[0]=bondvector[0]*-1.;
+                bondvector[1]=bondvector[1]*-1.;
+                bondvector[2]=bondvector[2]*-1.;
+                for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                    translate_atom_X(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[0]);
+                    translate_atom_Y(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[1]);
+                    translate_atom_Z(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[2]);
+                }
+            }
+            else if(bond[jj].type==2){//bond angle
                 angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
                 generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
                 //rotating all of atoms involved around the bond
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
                     rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+            }
+            else{//bend_symmetric
+                angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                angle=angle/2.;
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                }
+                angle=-1.*angle;
+                generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                //rotating all of atoms involved around the bond
+                for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom2[ii]], R);
                 }
             }
         }
@@ -961,6 +1091,7 @@ int main(){
                     acceptable_structures++;
                     sprintf(min_chi2_output_filename, "%s_struct%d.mol2", filename_base, acceptable_structures);
                     printf("(%d) Acceptable structure found\n", acceptable_structures);
+                    fprintf(log_file,"(%d) Acceptable structure found\n", acceptable_structures);
                     write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
 
                     //The minimum and max distances are updated, if necessary, to print out the fitted curves ranges at the end.
@@ -995,6 +1126,7 @@ int main(){
                     other_structures++;
                     sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", filename_base, other_structures);
                     printf("(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
+                    fprintf(log_file,"(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
                     write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
                 }
             }
@@ -1015,6 +1147,7 @@ int main(){
     }
 
     printf("\nFound a total of %d acceptable structures,\n%d of which were within the requested RMSD from the best one\n", acceptable_structures+other_structures, acceptable_structures);
+    fprintf(log_file,"\nFound a total of %d acceptable structures,\n%d of which were within the requested RMSD from the best one\n", acceptable_structures+other_structures, acceptable_structures);
 
     //if there are too many structures, erase the structures and exit the program
     if(max_accept_failsafe == 1){
@@ -1036,10 +1169,16 @@ int main(){
     printf("_____________________________________________________________________________________________________\n");
     printf("\nOverlaying structures\n");
 
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nOverlaying structures\n");
+
     //for primary structures
     compile_mol2_files(filename_base, acceptable_structures);
     printf("_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fclose(log_file);
     create_cif(overlay_filename, N_atoms+5);
+    log_file=fopen("log.txt","a");
 
     //for all structures
     compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
@@ -1047,12 +1186,18 @@ int main(){
     //write out the fitted REDOR curve and ranges.
     printf("\n_____________________________________________________________________________________________________\n");
     printf("\nWriting the fitted RE(SP)DOR data to a file\n");
+
+    fprintf(log_file,"\n_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nWriting the fitted RE(SP)DOR data to a file\n");
     if(meticulous==0)
         write_fits(filename_base,support,REDOR);
     else
         write_fits_meticulous(filename_base,support,REDOR,xyz_it);
     printf("_____________________________________________________________________________________________________\n");
     printf("\nStructure determination finished successfully\n");
+
+    fprintf(log_file,"_____________________________________________________________________________________________________\n");
+    fprintf(log_file,"\nStructure determination finished successfully\n");
 
     //Here starts the code for the minor structure search.
     //The code first calculates the dephasing levels form the best structure
@@ -1062,6 +1207,9 @@ int main(){
     if(found_structures>0){
         printf("_____________________________________________________________________________________________________\n");
         printf("\nBeginning a search for up to %d minor surface species\n", found_structures);
+
+        fprintf(log_file,"_____________________________________________________________________________________________________\n");
+        fprintf(log_file,"\nBeginning a search for up to %d minor surface species\n", found_structures);
 
         vector< vector< vector<double> > > xyz_minor;
         xyz_minor.resize(found_structures, vector< vector<double> > (N_atoms, vector<double>(3,0.)));
@@ -1093,6 +1241,10 @@ int main(){
             printf("_____________________________________________________________________________________________________\n");
             printf("\nSearching for surface species number %d\n",found_structures+1);
             printf("Looking to reduce Chi2 from %lf to %lf\n",previous_Chi2,Chi2_limit);
+
+            fprintf(log_file,"_____________________________________________________________________________________________________\n");
+            fprintf(log_file,"\nSearching for surface species number %d\n",found_structures+1);
+            fprintf(log_file,"Looking to reduce Chi2 from %lf to %lf\n",previous_Chi2,Chi2_limit);
             for(i=0;i<N_curves;i++){
                 if(Chi2_limit>REDOR[i].chi2_max)
                     REDOR[i].chi2_max=Chi2_limit;
@@ -1145,12 +1297,48 @@ int main(){
                             translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
                         }
                     }
-                    else{//bond angle
+                    else if(bond[jj].type==4){//bond elongation
+                        get_internuclear_vector(bondvector,xyz_priv[bond[jj].atom1],xyz_priv[bond[jj].atom2]);
+                        step=bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin;
+                        step=step/2.;
+                        bondvector[0]=bondvector[0]*step;
+                        bondvector[1]=bondvector[1]*step;
+                        bondvector[2]=bondvector[2]*step;
+                        for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                            translate_atom_X(xyz_priv[bond[jj].affected_atom[ii]],bondvector[0]);
+                            translate_atom_Y(xyz_priv[bond[jj].affected_atom[ii]],bondvector[1]);
+                            translate_atom_Z(xyz_priv[bond[jj].affected_atom[ii]],bondvector[2]);
+                        }
+                        bondvector[0]=bondvector[0]*-1.;
+                        bondvector[1]=bondvector[1]*-1.;
+                        bondvector[2]=bondvector[2]*-1.;
+                        for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                            translate_atom_X(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[0]);
+                            translate_atom_Y(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[1]);
+                            translate_atom_Z(xyz_priv[bond[jj].affected_atom2[ii]],bondvector[2]);
+                        }
+                    }
+                    else if(bond[jj].type==2){//bond angle
                         angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
                         generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
                         //rotating all of atoms involved around the bond
                         for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
-                    rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                            rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                        }
+                    }
+                    else{//bend_symmetric
+                        angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                        angle=angle/2.;
+                        generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                        //rotating all of atoms involved around the bond
+                        for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
+                            rotate_around_bond2(xyz_priv[bond[jj].affected_atom[ii]], R);
+                        }
+                        angle=-1.*angle;
+                        generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
+                        //rotating all of atoms involved around the bond
+                        for(ii=0;ii<bond[jj].N_aff_atoms2; ii++){
+                            rotate_around_bond2(xyz_priv[bond[jj].affected_atom2[ii]], R);
                         }
                     }
                 }
@@ -1212,6 +1400,7 @@ int main(){
                                     current_best_Chi2=chi2;
                                     current_CL=return_CI(previous_Chi2,chi2)*100;
                                     printf("\nChi2 reduced to %lf; corresponding to a confidence level of %.1lf percent",chi2,current_CL);
+                                    fprintf(log_file,"\nChi2 reduced to %lf; corresponding to a confidence level of %.1lf percent",chi2,current_CL);
                                 }
                                 if(chi2<Chi2_limit){
                                     Chi2_limit=chi2;
@@ -1219,6 +1408,7 @@ int main(){
                                     found=1;
                                     new_weight=0.05+0.05*jj;
                                     printf("  (secondary structure found!)");
+                                    fprintf(log_file,"  (secondary structure found!)");
                                 }
                             }
                             else
@@ -1233,6 +1423,7 @@ int main(){
                     double deviation = overlay_structures(N_atoms, xyz_minor[i], xyz_minor[found_structures]);
                     if(deviation<cutoff_RMSD){
                         printf("\nMinor structure was found to be within error of the main structure.");
+                        fprintf(log_file,"\nMinor structure was found to be within error of the main structure.");
                         found=0;
                         break;
             }}}
@@ -1256,6 +1447,7 @@ int main(){
             previous_Chi2=Chi2_limit;
             Chi2_limit=max_Chi2_multi(Chi2_limit,minor_structures_CL/100.);
             printf("\nIdentified surface species number %d\n", found_structures);
+            fprintf(log_file,"\nIdentified surface species number %d\n", found_structures);
         }while(true);
 
         for(i=0;i<found_structures;i++){
@@ -1267,27 +1459,46 @@ int main(){
         printf("\n_____________________________________________________________________________________________________\n");
         printf("\nThe search for minor surface species has completed.\n");
         printf("_____________________________________________________________________________________________________\n");
+
+        fprintf(log_file,"\n_____________________________________________________________________________________________________\n");
+        fprintf(log_file,"\nThe search for minor surface species has completed.\n");
+        fprintf(log_file,"_____________________________________________________________________________________________________\n");
         if(found_structures>1){
             printf("\nINTERFACES was able to improve the quality of the (%.1lf percent confidence interval)\n",current_CL);
             printf("REDOR fits with the inclusion of %d conformers. \n",found_structures);
             printf("These structures have been saved, inspect them to ensure that they are truly different.\n");
             printf("\nThe following are the weights of the %d conformers:",found_structures);
+
+            fprintf(log_file,"\nINTERFACES was able to improve the quality of the (%.1lf percent confidence interval)\n",current_CL);
+            fprintf(log_file,"REDOR fits with the inclusion of %d conformers. \n",found_structures);
+            fprintf(log_file,"These structures have been saved, inspect them to ensure that they are truly different.\n");
+            fprintf(log_file,"\nThe following are the weights of the %d conformers:",found_structures);
             for(i=0;i<found_structures;i++){
                 printf("\nConformer %d has a weight of %.2lf",i+1,weights[i]);
+                fprintf(log_file,"\nConformer %d has a weight of %.2lf",i+1,weights[i]);
             }
 
             //write out the fitted REDOR curve and ranges.
             printf("\n_____________________________________________________________________________________________________\n");
             printf("\nWriting the fitted RE(SP)DOR data to a file\n");
+            fprintf(log_file,"\n_____________________________________________________________________________________________________\n");
+            fprintf(log_file,"\nWriting the fitted RE(SP)DOR data to a file\n");
             write_fits_multi(found_structures,filename_base,REDOR,xyz_minor,weights);
         }
-        else
+        else{
             printf("\nINTERFACES couldn't identify minor surface species within the specified %.1lf percent confidence interval\n",minor_structures_CL);
+            fprintf(log_file,"\nINTERFACES couldn't identify minor surface species within the specified %.1lf percent confidence interval\n",minor_structures_CL);
+        }
 
         printf("_____________________________________________________________________________________________________\n");
         printf("\nMinor structure determination finished successfully\n");
         printf("_____________________________________________________________________________________________________\n");
+
+        fprintf(log_file,"_____________________________________________________________________________________________________\n");
+        fprintf(log_file,"\nMinor structure determination finished successfully\n");
+        fprintf(log_file,"_____________________________________________________________________________________________________\n");
     }//end of minor structure search
 
+    fclose(log_file);
     return 0;
 }//end int main

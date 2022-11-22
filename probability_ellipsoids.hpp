@@ -36,7 +36,8 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     //and generate a cif file containing the average structure with error ellipsoids
     char error_filename[128];
     sprintf(error_filename,"Errors.txt");
-    FILE *error_file;
+    FILE *error_file, *log_file;
+    log_file=fopen("log.txt","a");
 
     double Pi = 3.1415926535897932384626433;
     char buffer[128], crap[3], element[N_atoms][3];
@@ -185,6 +186,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
         }
         counter++;
         printf("\nCalculating probability ellipsoids for atom %d of %d",counter,N_atoms);
+        fprintf(log_file,"\nCalculating probability ellipsoids for atom %d of %d",counter,N_atoms);
     }
 
     //finding the value of phi and the X and Y RMS values
@@ -247,4 +249,5 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
 
     }
     fclose(cif);
+    fclose(log_file);
 }

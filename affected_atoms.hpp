@@ -5,10 +5,12 @@ struct Bond{
     int atom2;
     int atom0;
     int N_aff_atoms;
+    int N_aff_atoms2;
     int N_steps;
     vector<int> affected_atom;
+    vector<int> affected_atom2;
     int mod;
-    int type; //0=revolve 1=stretch 2=bend
+    int type; //0=revolve 1=stretch 2=bend 3=bend_symmetric 4=stretch_symmetric
     double dmin;
     double dmax;
 };
@@ -22,6 +24,12 @@ void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> >
         bond[i].N_aff_atoms=1;
         bond[i].affected_atom.resize(bond[i].N_aff_atoms);
         bond[i].affected_atom[0]=bond[i].atom2;
+
+        if(bond[i].type==3){
+            bond[i].N_aff_atoms2=1;
+            bond[i].affected_atom2.resize(bond[i].N_aff_atoms2);
+            bond[i].affected_atom2[0]=bond[i].atom0;
+        }
     }
 
     for(k=0;k<N_rotatable_bonds;k++){
@@ -50,6 +58,35 @@ void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> >
                 }//loop over neighbors of affected atom
             }//loop over last shell of affected_atoms
         }while(found==0);
+
+        if(bond[k].type>=3){ //bend_symmetric and stretch_symmetric has two sets of affected atoms
+            start=0;
+            do{
+                found=1;
+                for(i=start;i<bond[k].N_aff_atoms2;i++){
+                    for(j=1;j<neighbors[bond[k].affected_atom2[i]].size();j++){
+                        for(l=0;l<bond[k].affected_atom2.size();l++){
+                            check=0;
+                            if(neighbors[bond[k].affected_atom2[i]][j]==bond[k].affected_atom2[l]){
+                                check=1;
+                                break;
+                            }
+                            else if(neighbors[bond[k].affected_atom2[i]][j]==bond[k].atom1){
+                                check=1;
+                                break;
+                            }
+                        }//loop over current affected atoms to check
+                        if(check==0){
+                            bond[k].affected_atom2.push_back(neighbors[bond[k].affected_atom2[i]][j]);
+                            found=1;
+                            bond[k].N_aff_atoms2++;
+                            start++;
+                        }
+                    }//loop over neighbors of affected atom
+                }//loop over last shell of affected_atoms
+            }while(found==0);
+        }
+
     }//looping over rotatable bonds
 }
 
