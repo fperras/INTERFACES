@@ -16,3 +16,11 @@
 	-Added the option to fit the REDOR data to multiple different surface conformers. This is activated by specifying 
 	 confidence level for the resolution of minor structures with the keyword "minor_structures_CL" followed by the 
 	 value in percent. This functionality is not fully tested and should be approached with caution.
+
+11/22/22
+-New Features
+	-The output to the terminal/cmd window is now also copied to a lof file named 'log.txt'
+	-A new function "bend_symmetric" can be used to move both sides of the central atom simultaneously. It works
+	 analogously to "bend".
+	-A new function "stretch_symmetric" can be used to move both sides of the central atom simultaneously. It works
+	 analogously to "stretch".
