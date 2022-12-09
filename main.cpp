@@ -375,7 +375,7 @@ int main(){
                 if(constraint[Nconst].minimum>constraint[Nconst].maximum){
                     double value=constraint[Nconst].minimum;
                     constraint[Nconst].minimum=constraint[Nconst].maximum;
-                    constraint[Nconst].minimum=value;
+                    constraint[Nconst].maximum=value;
                 }
 
                 Nconst++;
@@ -391,7 +391,7 @@ int main(){
                 if(constraint[Nconst].minimum>constraint[Nconst].maximum){
                     double value=constraint[Nconst].minimum;
                     constraint[Nconst].minimum=constraint[Nconst].maximum;
-                    constraint[Nconst].minimum=value;
+                    constraint[Nconst].maximum=value;
                 }
 
                 Nconst++;
@@ -408,7 +408,7 @@ int main(){
                 if(constraint[Nconst].minimum>constraint[Nconst].maximum){
                     double value=constraint[Nconst].minimum;
                     constraint[Nconst].minimum=constraint[Nconst].maximum;
-                    constraint[Nconst].minimum=value;
+                    constraint[Nconst].maximum=value;
                 }
 
                 Nconst++;
@@ -423,7 +423,7 @@ int main(){
                 if(constraint[Nconst].minimum>constraint[Nconst].maximum){
                     double value=constraint[Nconst].minimum;
                     constraint[Nconst].minimum=constraint[Nconst].maximum;
-                    constraint[Nconst].minimum=value;
+                    constraint[Nconst].maximum=value;
                 }
 
                 Nconst++;
