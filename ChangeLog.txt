@@ -24,3 +24,10 @@
 	 analogously to "bend".
 	-A new function "stretch_symmetric" can be used to move both sides of the central atom simultaneously. It works
 	 analogously to "stretch".
+	 
+12/13/22
+-New Features
+	-Previous versions only allowed the consideration of 2.1 billion conformers which was restrictive. This was increased 
+	 to just above 9 quintillion (long long int size).
+	-The addition of an interatomic distance constraint overrides the interatomic distance collision constraint. This helps
+	 to optimize ringed structures which reuqire the use of distance constraints to close the ring.
