@@ -681,12 +681,12 @@ int main(int argc, char *argv[]){
     //We also store the distance and std indices for this structure in order to supply its
     //simulated curves.
     printf("_____________________________________________________________________________________________________\n");
-    printf("\nWill perform a search over a total of %d conformations\n",iterations);
+    printf("\nWill perform a search over a total of %lld conformations\n",iterations);
     printf("Searching for the best-fit structure\n");
     printf("_____________________________________________________________________________________________________\n\n");
 
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
-    fprintf(log_file,"\nWill perform a search over a total of %d conformations\n",iterations);
+    fprintf(log_file,"\nWill perform a search over a total of %lld conformations\n",iterations);
     fprintf(log_file,"Searching for the best-fit structure\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
     int top_thread;
