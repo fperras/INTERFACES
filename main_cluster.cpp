@@ -402,6 +402,20 @@ int main(int argc, char *argv[]){
                     constraint[Nconst].maximum=value;
                 }
 
+                //Resetting the values so that they fall in the expected range of angles
+                while(constraint[Nconst].minimum<0.){
+                    constraint[Nconst].minimum = constraint[Nconst].minimum+180.;
+                }
+                while(constraint[Nconst].minimum>180.0){
+                    constraint[Nconst].minimum = constraint[Nconst].minimum-180.;
+                }
+                while(constraint[Nconst].maximum<0.0){
+                    constraint[Nconst].maximum = constraint[Nconst].maximum+180.;
+                }
+                while(constraint[Nconst].maximum>180.0){
+                    constraint[Nconst].maximum = constraint[Nconst].maximum-180.;
+                }
+
                 Nconst++;
                 sprintf(keyword,"void");
             }
@@ -412,6 +426,20 @@ int main(int argc, char *argv[]){
                 constraint[Nconst].atom3--;
                 constraint[Nconst].atom4--;
                 constraint[Nconst].type=2;
+
+                //Resetting the values so that they fall in the expected range of dihedrals
+                while(constraint[Nconst].minimum<-180.0){
+                    constraint[Nconst].minimum = constraint[Nconst].minimum+360.;
+                }
+                while(constraint[Nconst].minimum>180.0){
+                    constraint[Nconst].minimum = constraint[Nconst].minimum-360.;
+                }
+                while(constraint[Nconst].maximum<-180.0){
+                    constraint[Nconst].maximum = constraint[Nconst].maximum+360.;
+                }
+                while(constraint[Nconst].maximum>180.0){
+                    constraint[Nconst].maximum = constraint[Nconst].maximum-360.;
+                }
 
                 if(constraint[Nconst].minimum>constraint[Nconst].maximum){
                     double value=constraint[Nconst].minimum;
@@ -681,12 +709,12 @@ int main(int argc, char *argv[]){
     //We also store the distance and std indices for this structure in order to supply its
     //simulated curves.
     printf("_____________________________________________________________________________________________________\n");
-    printf("\nWill perform a search over a total of %lld conformations\n",iterations);
+    printf("\nWill perform a search over a total of %d conformations\n",iterations);
     printf("Searching for the best-fit structure\n");
     printf("_____________________________________________________________________________________________________\n\n");
 
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
-    fprintf(log_file,"\nWill perform a search over a total of %lld conformations\n",iterations);
+    fprintf(log_file,"\nWill perform a search over a total of %d conformations\n",iterations);
     fprintf(log_file,"Searching for the best-fit structure\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
     int top_thread;
