@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]){
     char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
     int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, found_structures=0;
-    int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
+    long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5, minor_structures_CL;
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
     vector<vector<int> > REDOR_det_index, REDOR_rec_index;
@@ -607,6 +607,18 @@ int main(int argc, char *argv[]){
     //the rotation or elongation of a given bond.
     get_affected_atoms(N_rotatable_bonds,bond,neighbors);
 
+    //After all the affected atoms were calculated we add the pairs with distance constraints to the lists
+    //of neighbors so that collisions aren't triggered when working with things such as flexible rings
+    //with short 1-bond distance constraints.
+    for(i=0;i<N_constraints;i++){
+        switch (constraint[i].type){
+            case 0 : //distance
+                neighbors[constraint[i].atom1].push_back(constraint[i].atom2);
+                neighbors[constraint[i].atom2].push_back(constraint[i].atom1);
+                break;
+        }//end switch
+    }
+
     k=1;
     int mol2_filename_len=strlen(mol2_filename)-5;
     char filename_base[mol2_filename_len+1];
@@ -617,26 +629,26 @@ int main(int argc, char *argv[]){
     //over the various structural variables. To achieve this the program loops over
     //a generic iterator: it and uses modulo operations to determine this iteration's
     //bond angles, distances, etc. So each variable has an increment and a modulo (mod) variable
-    int iterations=1;
+    long long int iterations=(long long int)1;
     for(i=0;i<N_rotatable_bonds;i++){
         bond[i].mod=iterations;
-        iterations=iterations*bond[i].N_steps;
+        iterations=iterations*(long long int)bond[i].N_steps;
     }
 
-    int x_mod=iterations;
-    iterations = iterations * N_steps_X;
+    long long int x_mod=iterations;
+    iterations = iterations * (long long int)N_steps_X;
     double x_angle = 2*Pi/N_steps_X;
     if(N_steps_X==1)
         x_angle=0.;
 
-    int y_mod=iterations;
-    iterations = iterations * N_steps_Y;
+    long long int y_mod=iterations;
+    iterations = iterations * (long long int)N_steps_Y;
     double y_angle = 2*Pi/N_steps_Y;
     if(N_steps_Y==1)
         y_angle=0.;
 
-    int z_mod=iterations;
-    iterations = iterations * N_steps_Z;
+    long long int z_mod=iterations;
+    iterations = iterations * (long long int)N_steps_Z;
     double z_step = (z_max-z_min)/(N_steps_Z-1);
     if(N_steps_Z==1)
         z_step=0.;
@@ -680,7 +692,7 @@ int main(int argc, char *argv[]){
     int top_thread;
 
     #pragma omp parallel for
-    for(int it=0;it<iterations;it++){
+    for(long long int it=0;it<iterations;it++){
         //processor-specific variables
         vector< vector<double> > xyz_priv;
         xyz_priv.resize(N_atoms, vector<double>(3,0.));
@@ -939,7 +951,7 @@ int main(int argc, char *argv[]){
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
 
     #pragma omp parallel for
-    for(int it=0;it<iterations;it++){
+    for(long long int it=0;it<iterations;it++){
         if((acceptable_structures+other_structures)>max_acceptable_struct){
             //This is a safety feature that will limit the number of mol2 files that the program will save
             it = iterations;
@@ -1259,7 +1271,7 @@ int main(int argc, char *argv[]){
             }
 
             #pragma omp parallel for
-            for(int it=0;it<iterations;it++){
+            for(long long int it=0;it<iterations;it++){
                 vector< vector<double> > xyz_priv;
                 xyz_priv.resize(N_atoms, vector<double>(3,0.));
                 int ii, jj, kk, bond_position[N_rotatable_bonds];
