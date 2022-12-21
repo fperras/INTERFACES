@@ -344,12 +344,14 @@ double RDD_1A(const char *element1, const char *element2){
     char nuclei[2][3];
     sprintf(nuclei[0],"%s",element1); sprintf(nuclei[1],"%s",element2);
     int i;
-    double gamma[2];
+    double gamma[2], SREDOR=1.;
 
     for(i=0;i<2;i++){
-        if(strcmp(nuclei[i],"H")==0)
-            gamma[i]=(i)*192.4814-(i-1)*346.5883;
-	else if(strcmp(nuclei[i],"D")==0)
+        if(strcmp(nuclei[i],"H")==0){
+			gamma[i]=346.5883;
+			SREDOR = 0.5554;
+		}
+		else if(strcmp(nuclei[i],"D")==0)
             gamma[i]=53.203;
         else if(strcmp(nuclei[i],"Li")==0)
             gamma[i]=134.7074;
@@ -363,8 +365,10 @@ double RDD_1A(const char *element1, const char *element2){
             gamma[i]=35.1433;
          else if(strcmp(nuclei[i],"O")==0)
             gamma[i]=47.0036;
-         else if(strcmp(nuclei[i],"F")==0)
-            gamma[i]=(i)*181.18-(i-1)*326.2387;
+         else if(strcmp(nuclei[i],"F")==0){
+            gamma[i]=326.2387;
+			SREDOR = 0.5554;
+		 }
          else if(strcmp(nuclei[i],"Na")==0)
             gamma[i]=91.7360;
          else if(strcmp(nuclei[i],"Mg")==0)
@@ -439,7 +443,7 @@ double RDD_1A(const char *element1, const char *element2){
          }
     }
 
-    return gamma[0]*gamma[1];
+    return gamma[0]*gamma[1]*SREDOR;
 }
 
 double RDD(double RDD_1A, double distance){
