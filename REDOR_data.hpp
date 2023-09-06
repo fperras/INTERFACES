@@ -640,34 +640,34 @@ void write_fits(char *base_filename, const char *support_name, vector< REDOR_dat
     //writing the header to the CSV file
     fprintf(out,",");
     for(i=0;i<REDOR.size();i++){
-        fprintf(out,",%s,,,",REDOR[i].filename);
+        fprintf(out,"%s,,,,,",REDOR[i].filename);
     }
-    fprintf(out,"\ntime (s),,");
+    fprintf(out,"\n");
     for(i=0;i<REDOR.size();i++){
-        fprintf(out,"best-fit,max,min,,");
+        fprintf(out,"time (s),best-fit,max,min,,");
     }
     fprintf(out,"\n");
 
     //writing out the dephasing values to the CSV file
     for(i=1;i<=250;i++){
         double time=i*0.0002;
-        fprintf(out,"%lf,,",time);
 
         for(j=0;j<REDOR.size();j++){
+            fprintf(out,"%lf,",time/REDOR[j].order_parameter);
             if(REDOR[j].type==0){//surface curves
-                DSS0 = DSS0_pred(time,REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDOR[j]);
+                DSS0 = DSS0_pred(time/REDOR[j].order_parameter,REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDOR[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDOR[j]);
+                DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDOR[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDOR[j]);
+                DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDOR[j]);
                 fprintf(out,"%lf,,",DSS0);
             }
             else{
-                DSS0 = REDOR_pred(time, REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDORs, REDOR[j]);
+                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDORs, REDOR[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDORs, REDOR[j]);
+                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDORs, REDOR[j]);
                 fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDORs, REDOR[j]);
+                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDORs, REDOR[j]);
                 fprintf(out,"%lf,,",DSS0);
             }
         }
