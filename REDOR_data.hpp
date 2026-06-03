@@ -1,5 +1,6 @@
 #include "statistics.hpp"
 #include "constraints.hpp"
+#include <gsl/gsl_sf_bessel.h>
 
 struct REDOR_dataset{
     vector<int> detected;
@@ -11,10 +12,14 @@ struct REDOR_dataset{
     double RDD1A;
     double scaling_factor;
     double order_parameter;
+    double NA;
     char filename[120];
     double chi2_min;
     double chi2_max;
     double chi2_best;
+
+    //for the otf-REDOR generation, ability to change the powder averaging
+    int ZCWg;
 
     //These arrays to store the average and stdev distances of the (0)best fit structure, (1)Smallest distance and (2)Largest distance from the surface
     int d_index[3];
@@ -222,11 +227,6 @@ int load_exp_curve(REDOR_dataset &REDOR){
             fprintf(error_file, "\nERROR: illegal REDOR intensity of %lf found in %s\n",REDOR.DSS0[i], REDOR.filename);
             fclose(error_file);
             exit(1);
-		}
-		else if(REDOR.DSS0[i]<0.05){
-            error_file=fopen(error_filename,"a");
-            fprintf(error_file, "\nWARNING: Very low dephasing value of %lf in %s can lead to over fitting\nYou may obtain a better fit by eliminating this data point.\n",REDOR.DSS0[i], REDOR.filename);
-            fclose(error_file);
 		}
 	}}
 
@@ -451,46 +451,104 @@ double RDD(double RDD_1A, double distance){
     return RDD_1A*pow(distance,-3.0);
 }
 
-void generate_REDORs(vector< vector<double> > &REDORs){
-    //This function generates a REDOR/RESPDOR library of curves assuming a 100 Hz RDD
-    //in time increments of 10us up to 100ms
-    //data are organized as REDORs[(time-10us)/10us][spin*2]=DS/S0
-    //dimensions are fixed at REDORs[1000][9] and the data are stored in the REDOR_library.txt file
-    FILE *fp, *error_file;
-    int i;
-    char buffer[128];
+double REDOR_DSS0(double RDD, double time, double order_parameter, int spin){
+    //On-the-fly calculation of a REDOR dephasing for a specific dipolar coupling and time
+    //Uses the exact analytical representation from Lafon.
+    double DSS0=1.;
 
-    fp=fopen("REDOR_library.txt","r");
-    if(fp==NULL){
-        error_file=fopen("Errors.txt","a");
-        fprintf(error_file, "\nERROR: REDOR_library.txt not found\n");
-        fclose(error_file);
-        exit(1);
-    }
+    switch(spin){
+        case 1 :
+            return 1.-Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, sqrt(2.)*time*RDD*order_parameter);
+        break;
 
-    for(i=0;i<10000;i++){
-        if(fgets(buffer, sizeof(buffer), fp)!=NULL){
-            sscanf(buffer,"%lf %lf %lf %lf %lf %lf %lf %lf %lf",&REDORs[i][0],&REDORs[i][1],&REDORs[i][2],&REDORs[i][3],&REDORs[i][4],&REDORs[i][5],&REDORs[i][6],&REDORs[i][7],&REDORs[i][8]);
-        }
-        else{
-            error_file=fopen("Errors.txt","a");
-            fprintf(error_file, "\nERROR: REDOR_library.txt file is missing data\n");
-            fclose(error_file);
-            exit(1);
-        }
+        case 2:
+            DSS0-= 1./3.;
+            DSS0-= 4./9.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./9.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 3:
+            DSS0-= 1./4.;
+            DSS0-= 3./8.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./4.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./8.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 4:
+            DSS0-= 1./5.;
+            DSS0-= 8./25.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 6./25.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 4./25.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./25.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 5:
+            DSS0-= 1./6.;
+            DSS0-= 5./18.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./9.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./6.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./9.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./18.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 5*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 5*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 6:
+            DSS0-= 1./7.;
+            DSS0-= 12./49.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 10./99.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 8./49.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 6./49.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 4./49.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 5*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 5*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./49.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 6*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 6*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 7:
+            DSS0-= 1./8.;
+            DSS0-= 14./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 12./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 10./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 8./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 6./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 5*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 5*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 4./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 6*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 6*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./64.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 7*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 7*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 8:
+            DSS0-= 1./9.;
+            DSS0-= 16./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 14./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 12./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 10./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 8./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 5*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 5*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 6./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 6*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 6*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 4./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 7*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 7*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./81.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 8*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 8*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
+
+        case 9:
+            DSS0-= 1./10.;
+            DSS0-= 9./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 1*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 1*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 8./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 2*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 2*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 7./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 3*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 3*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 6./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 4*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 4*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 5./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 5*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 5*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 4./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 6*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 6*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 3./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 7*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 7*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 2./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 8*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 8*sqrt(2.)*time*RDD*order_parameter);
+            DSS0-= 1./50.* Pi*sqrt(2.)/4.*gsl_sf_bessel_Jnu(0.25, 9*sqrt(2.)*time*RDD*order_parameter)*gsl_sf_bessel_Jnu(-0.25, 9*sqrt(2.)*time*RDD*order_parameter);
+            return DSS0;
+        break;
     }
-    fclose(fp);
+    return 0.0;
 }
 
-double REDOR_DSS0(double RDD, double time, double order_parameter, int spin, vector< vector<double> > &REDORs){
-   // int time_index = round(RDD*time/0.1 - 1.); //compensates for different RDD than used in the library
-    int time_index = round(1000*time*RDD*order_parameter - 1.);
-    time_index = (time_index>9999)*9999 + (time_index<=9999)*time_index;
-    time_index = (time_index>-1)*time_index;
-    return REDORs[time_index][spin-1];
-}
-
-double REDOR_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, vector< vector<double> > &REDORs, REDOR_dataset &REDOR){
+double REDOR_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, REDOR_dataset &REDOR){
 	//This function is used to calculate the REDOR dephasing given a gaussian distribution of distances with d_mean and d_std
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
 	//and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
@@ -499,15 +557,15 @@ double REDOR_pred(double time, double d_mean, double d_std, vector< vector<doubl
 
 	if(REDOR.detected.size()==2){
         distance=d_mean-d_std*d_std;
-        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin,REDORs);
+        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin);
         distance=d_mean+d_std*d_std;
-        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin,REDORs);
+        DSS0= DSS0 + 0.5*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin);
 	}
 
 	else{
         for(i=0;i<200;i++){
             distance=0.1+i*0.1;
-            DSS0= DSS0 + d_prob(distance, d_mean, d_std, gaussians)*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin,REDORs);
+            DSS0= DSS0 + d_prob(distance, d_mean, d_std, gaussians)*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin);
         }
 	}
 	return DSS0*REDOR.scaling_factor;
@@ -532,77 +590,38 @@ int create_X2_table(REDOR_dataset &REDOR, const char *support_name){
     gaussians.resize(401, vector<double>(101,0.));
     generate_gaussians(gaussians);
 
-    if(REDOR.type==0){
-        if(REDOR.detected.size()==1){
-            #pragma omp parallel for
-            for(d_index=0;d_index<200;d_index++){
-                double d_mean=0.1*d_index+0.1;
-                double DSS0_calc, d_std=0.;
-                int std_index=0, ii;
+    if(REDOR.detected.size()==1){
+        #pragma omp parallel for
+        for(d_index=0;d_index<200;d_index++){
+            double d_mean=0.1*d_index+0.1;
+            double DSS0_calc, d_std=0.;
+            int std_index=0, ii;
 
-                for(ii=0;ii<Npoints;ii++){
-                    DSS0_calc = DSS0_pred(REDOR.tmix[ii],d_mean,d_std,gaussians,REDOR);
-                    REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]),2.);
-                }
+            for(ii=0;ii<Npoints;ii++){
+                DSS0_calc = DSS0_pred(REDOR.tmix[ii],d_mean,d_std,gaussians,REDOR);
+                REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]+REDOR.scaling_factor/10.),2.);
             }
         }
+    }
 
-        else{
-            #pragma omp parallel for
-            for(d_index=0;d_index<200;d_index++){
-                double d_mean=0.1*d_index+0.1;
-                double DSS0_calc;
-                int std_index, ii;
+    else{
+        #pragma omp parallel for
+        for(d_index=0;d_index<200;d_index++){
+            double d_mean=0.1*d_index+0.1;
+            double DSS0_calc;
+            int std_index, ii;
 
-                for(std_index=0;std_index<101; std_index++){
-                    double d_std=0.1*std_index;
+            for(std_index=0;std_index<101; std_index++){
+                double d_std=0.1*std_index;
 
-                    for(ii=0;ii<Npoints;ii++){
-                        DSS0_calc = DSS0_pred(REDOR.tmix[ii], d_mean, d_std, gaussians, REDOR);
-                        REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]),2.);
-                    }
+                for(ii=0;ii<Npoints;ii++){
+                    DSS0_calc = DSS0_pred(REDOR.tmix[ii], d_mean, d_std, gaussians, REDOR);
+                    REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]+REDOR.scaling_factor/10.),2.);
                 }
             }
         }
     }
 
-    else{//intramolecular REDOR
-        vector< vector<double> > REDORs;
-        REDORs.resize(10000, vector<double>(9,0.));
-        generate_REDORs(REDORs);
-
-        if(REDOR.detected.size()==1){
-            #pragma omp parallel for
-            for(d_index=0;d_index<200;d_index++){
-                double d_mean=0.1*d_index+0.1;
-                double DSS0_calc, d_std=0.;
-                int std_index=0, ii;
-
-                for(ii=0;ii<Npoints;ii++){
-                    DSS0_calc = REDOR_pred(REDOR.tmix[ii], d_mean, d_std, gaussians, REDORs, REDOR);
-                    REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]),2.);
-                }
-            }
-        }
-
-        else{
-            #pragma omp parallel for
-            for(d_index=0;d_index<200;d_index++){
-                double d_mean=0.1*d_index+0.1;
-                double DSS0_calc;
-                int std_index, ii;
-
-                for(std_index=0;std_index<101; std_index++){
-                    double d_std=0.1*std_index;
-
-                    for(ii=0;ii<Npoints;ii++){
-                        DSS0_calc = REDOR_pred(REDOR.tmix[ii], d_mean, d_std, gaussians, REDORs,REDOR);
-                        REDOR.X2[d_index][std_index]=REDOR.X2[d_index][std_index] + pow((REDOR.DSS0[ii]-DSS0_calc),2.) / pow((REDOR.DSS0[ii]),2.);
-                    }
-                }
-            }
-        }
-    }
 	return 0;
 }
 
@@ -632,11 +651,6 @@ void write_fits(char *base_filename, const char *support_name, vector< REDOR_dat
     gaussians.resize(401, vector<double>(101,0.));
     generate_gaussians(gaussians);
 
-    vector< vector<double> > REDORs;
-    REDORs.resize(10000, vector<double>(9,0.));
-
-    generate_REDORs(REDORs);
-
     //writing the header to the CSV file
     fprintf(out,",");
     for(i=0;i<REDOR.size();i++){
@@ -654,22 +668,12 @@ void write_fits(char *base_filename, const char *support_name, vector< REDOR_dat
 
         for(j=0;j<REDOR.size();j++){
             fprintf(out,"%lf,",time/REDOR[j].order_parameter);
-            if(REDOR[j].type==0){//surface curves
-                DSS0 = DSS0_pred(time/REDOR[j].order_parameter,REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDOR[j]);
-                fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDOR[j]);
-                fprintf(out,"%lf,",DSS0);
-                DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDOR[j]);
-                fprintf(out,"%lf,,",DSS0);
-            }
-            else{
-                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDORs, REDOR[j]);
-                fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDORs, REDOR[j]);
-                fprintf(out,"%lf,",DSS0);
-                DSS0 = REDOR_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDORs, REDOR[j]);
-                fprintf(out,"%lf,,",DSS0);
-            }
+            DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[0]/10., REDOR[j].std_index[0]/10., gaussians, REDOR[j]);
+            fprintf(out,"%lf,",DSS0);
+            DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[1]/10., REDOR[j].std_index[1]/10., gaussians, REDOR[j]);
+            fprintf(out,"%lf,",DSS0);
+            DSS0 = DSS0_pred(time/REDOR[j].order_parameter, REDOR[j].d_index[2]/10., REDOR[j].std_index[2]/10., gaussians, REDOR[j]);
+            fprintf(out,"%lf,,",DSS0);
         }
         fprintf(out,"\n");
     }

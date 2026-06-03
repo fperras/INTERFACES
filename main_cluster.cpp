@@ -6,12 +6,33 @@
 /*Use this version of the main.cpp file when using a cluster. It uses an argument for the input file rather than asking for it in the command line*/
 int main(int argc, char *argv[]){
     char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
-    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, found_structures=0;
+    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, bulk=0, found_structures=0, ZCWg=99;
     long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5, minor_structures_CL;
+
+    //parameters instriduced for unit cell modifications, analogous to z_min/max and N_steps_Z, etc.
+    //order in array will be swell_full, a, b, c, and then expand_full, a, b ,c
+    double cell_min[8], cell_max[8]; int cell_steps[8];
+    for(i=0;i<8;i++){
+        cell_max[i]=cell_min[i]=1.;
+        cell_steps[i]=1;
+    }
+
     double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
     vector<vector<int> > REDOR_det_index, REDOR_rec_index;
     vector< REDOR_dataset > REDOR;
+    vector< vector<double> > cell;
+    cell.resize(3, vector<double>(3,0.));
+    cell[0][0]=cell[1][1]=cell[2][2]=1.;
+
+    vector<double> unit_cell;// a,b,c, alpha, beta, gamma
+    unit_cell.resize(6,1.);
+    unit_cell[3]=unit_cell[4]=unit_cell[5]=Pi/2.;//alpha, beta, gamma
+
+    vector<double> fitted_unit_cell;// a,b,c, alpha, beta, gamma
+    fitted_unit_cell.resize(6,1.);
+    fitted_unit_cell[3]=fitted_unit_cell[4]=fitted_unit_cell[5]=Pi/2.;//alpha, beta, gamma
+
     FILE *input, *mol2_file, *error_file, *log_file;
     log_file=fopen("log.txt","w");
 
@@ -28,9 +49,11 @@ int main(int argc, char *argv[]){
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
     fprintf(log_file,"\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
     fprintf(log_file,"\nWritten by James Cunningham and Frederic A. Perras\n");
-    fprintf(log_file,"US DOE, Ames National Laboratory, 2022\n");
+    fprintf(log_file,"US DOE, Ames National Laboratory, 2026\n");
     fprintf(log_file,"\nIf used for a publication, please cite: J. Magn. Reson. Open 2022, 12-13, 100066.\n");
+    fprintf(log_file,"\nFor the multi-site fitting cite: Dalton Trans. 2023, 52, 18502.\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
+
 
     printf("\n8888888 888b    888 88888888888 8888888888 8888888b.  8888888888     d8888  .d8888b.  8888888888  .d8888b.  \n");
     printf("  888   8888b   888     888     888        888   Y88b 888           d88888 d88P  Y88b 888        d88P  Y88b \n");
@@ -45,7 +68,10 @@ int main(int argc, char *argv[]){
     printf("_____________________________________________________________________________________________________\n");
     printf("\nA program for the automated structure elucidation of surface sites using RE(SP)DOR NMR, or other data\n");
     printf("\nWritten by James Cunningham and Frederic A. Perras\n");
-    printf("US DOE, Ames National Laboratory, 2022\n");
+    printf("US DOE, Ames National Laboratory, 2026\n");
+    printf("\nIf used for a publication, please cite: J. Magn. Reson. Open 2022, 12-13, 100066.");
+    printf("\nFor the multi-site fitting cite: Dalton Trans. 2023, 52, 18502.\n");
+    printf("_____________________________________________________________________________________________________\n");
 
 
     //Opening the error file to print out any issues that come up
@@ -66,7 +92,7 @@ int main(int argc, char *argv[]){
    	sprintf(input_filename,"%s",argv[1]);
    }
 
-    //Here the provided input file is read
+    //Finding the initial structure in the input_file.
     input=fopen(input_filename,"r");
         if(input==NULL){
             error_file=fopen(error_filename,"a");
@@ -76,20 +102,182 @@ int main(int argc, char *argv[]){
         }
     while(fgets(buffer, sizeof(buffer), input) != NULL){
         sscanf(buffer,"%s",keyword);
+        if(strcmp(keyword, "structure")==0){
+            sscanf(buffer,"%s %s",keyword,mol2_filename);
+            sprintf(keyword,"void");
+            break;
+        }
+    }
+    fclose(input);
+
+    //Next we read the provided starting mol2 file to extract the atomic coordinates and bonding connectivities.
+    //The bonding connectivities are used when determining which atoms are affected by a given rotation.
+    int mol2_len=strlen(mol2_filename);
+    const char *filetype = &mol2_filename[mol2_len-5];
+    if(strcmp(filetype,".mol2")!=0){
+        error_file=fopen(error_filename,"a");
+        fprintf(error_file, "\nERROR: Structure must be provided as a *.mol2 file\n");
+        fclose(error_file);
+        exit(1);
+    }
+
+    mol2_file=fopen(mol2_filename, "r");
+
+    if(mol2_file==NULL){
+        error_file=fopen(error_filename,"a");
+        fprintf(error_file, "\nERROR: mol2 file '%s' not found\n", mol2_filename);
+        fclose(error_file);
+        exit(1);
+    }
+
+    //First the program extracts the line numbers where the atom and bond tables begin, in addition to the number of atoms and bonds.
+    i=j=0;
+    while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
+        sscanf(buffer,"%s",keyword);
+            if(strcmp(keyword, "@<TRIPOS>MOLECULE")==0){
+                fgets(buffer, sizeof(buffer), mol2_file);
+                fgets(buffer, sizeof(buffer), mol2_file);
+                sscanf(buffer,"%d %d",&N_atoms, &N_bonds);
+                i++; j++;
+                i++; j++;
+            }
+            if(strcmp(keyword, "@<TRIPOS>ATOM")==0){
+                line_Atoms = i;
+                }
+            if(strcmp(keyword, "@<TRIPOS>BOND")==0){
+                line_Bonds = j;
+            }
+            i++; j++;
+            }
+    fclose(mol2_file);
+
+    //Now knowing how many bonds and atoms there are the following variables are created.
+    //Atom variables
+    vector< vector<double> > xyz;
+    xyz.resize(N_atoms, vector<double>(3,0.));
+    char element[N_atoms][3], atom_type[N_atoms][8];
+    int atom_id[N_atoms];
+    //bond variables
+    int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
+    char bond_type[N_bonds][20];
+    vector< vector<int> > neighbors;
+    neighbors.resize(N_atoms, vector<int> (1,0));
+    for(i=0;i<N_atoms;i++){
+        neighbors[i][0]=i;
+    }
+
+    //The mol2 file is opened for a second time to extract the coordinates and bond connections.
+    k=1;
+    mol2_file=fopen(mol2_filename,"r");
+    while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
+        if(k==line_Atoms+1){
+            for(i=0; i<N_atoms; i++){
+                fgets(buffer, sizeof(buffer), mol2_file);
+                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
+                element[i][0]=toupper(element[i][0]);
+                element[i][1]=tolower(element[i][1]);
+                k++;
+            }}
+        else if(k==line_Bonds){
+            for(i=0; i<N_bonds; i++){
+                fgets(buffer, sizeof(buffer), mol2_file);
+                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], bond_type[i]);
+                neighbors[ori_atom_id[i]-1].push_back(tar_atom_id[i]-1);
+                neighbors[tar_atom_id[i]-1].push_back(ori_atom_id[i]-1);
+                k++;
+            }}
+        else{
+            k++;
+        }
+    }
+    fclose(mol2_file);
+
+    //Reading the rest of the input file.
+    input=fopen(input_filename,"r");
+    while(fgets(buffer, sizeof(buffer), input) != NULL){
+        sscanf(buffer,"%s",keyword);
         if(strcmp(keyword, "meticulous")==0){
             meticulous=1;
             sprintf(keyword,"void");
+        }
+
+        else if(strcmp(keyword, "bulk")==0){
+            //turning off the surface collision checker if the bulk keyword is used and forcing meticulous.
+            meticulous=1;
+            bulk=1;
+            surface_collision_distance=-1.;
+            sprintf(keyword,"void");
+        }
+
+        else if(strcmp(keyword, "cell_cart")==0){
+            //definition of the unit cell using the standard cell cartesian format
+            //used for calculations on periodic systems
+            meticulous=1;
+            bulk=1;
+            surface_collision_distance=-1.;
+
+            fgets(buffer, sizeof(buffer), input);
+            sscanf(buffer,"%lf %lf %lf",&cell[0][0],&cell[0][1],&cell[0][2]);
+            fgets(buffer, sizeof(buffer), input);
+            sscanf(buffer,"%lf %lf %lf",&cell[1][0],&cell[1][1],&cell[1][2]);
+            fgets(buffer, sizeof(buffer), input);
+            sscanf(buffer,"%lf %lf %lf",&cell[2][0],&cell[2][1],&cell[2][2]);
+            sprintf(keyword,"void");
+
+            calc_cell_dimensions(cell,unit_cell);
+
+            if((cell[0][1]!=0.0)||(cell[0][2]!=0.0)||(cell[1][2]!=0.0)){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: invalid cell matrix.\n");
+                fclose(error_file);
+                exit(1);
+            }
+
+            if((unit_cell[0]==0.0)||(unit_cell[1]==0.0)||(unit_cell[2]==0.0)){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: invalid cell matrix.\n");
+                fclose(error_file);
+                exit(1);
+            }
+        }
+
+        else if(strcmp(keyword, "cell_abc")==0){
+            //definition of the unit cell using the a,b,c,alpha,beta,gamma format
+            //used for calculations on periodic systems
+            meticulous=1;
+            bulk=1;
+            surface_collision_distance=-1.;
+
+            sscanf(buffer,"%s",keyword,unit_cell[0],unit_cell[1],unit_cell[2],unit_cell[3],unit_cell[4],unit_cell[5]);
+            sprintf(keyword,"void");
+
+            calc_cell_matrix(cell,unit_cell);
+
+            error_file=fopen(error_filename,"a");
+            fprintf(error_file, "\nNOTICE: cell defined using its dimensions. \nINTERFACES will assume that the standard cell format is used in the xyz coordinates.\n");
+            fclose(error_file);
+            exit(1);
+
+            if((cell[0][1]!=0.0)||(cell[0][2]!=0.0)||(cell[1][2]!=0.0)){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: invalid unit cell.\n");
+                fclose(error_file);
+                exit(1);
+            }
+
+            if((unit_cell[0]==0.0)||(unit_cell[1]==0.0)||(unit_cell[2]==0.0)){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: invalid unit cell.\n");
+                fclose(error_file);
+                exit(1);
+            }
         }
 
         else if(strcmp(keyword, "minor_structures_CL")==0){
             sscanf(buffer,"%s %lf",keyword, &minor_structures_CL);
             found_structures=1;
             meticulous=1; //the minor structures code uses the meticulous version of the REDOR calculations
-            sprintf(keyword,"void");
-        }
-
-        else if(strcmp(keyword, "structure")==0){
-            sscanf(buffer,"%s %s",keyword,mol2_filename);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "support")==0){
@@ -116,6 +304,38 @@ int main(int argc, char *argv[]){
             sscanf(buffer,"%s %d",keyword, &N_steps_Y);
             sprintf(keyword,"void");
         }
+        else if(strcmp(keyword, "swell_sym")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[0], &cell_max[0], &cell_steps[0]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "swell_a")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[1], &cell_max[1], &cell_steps[1]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "swell_b")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[2], &cell_max[2], &cell_steps[2]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "swell_c")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[3], &cell_max[3], &cell_steps[3]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "expand_sym")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[4], &cell_max[4], &cell_steps[4]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "expand_a")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[5], &cell_max[5], &cell_steps[5]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "expand_b")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[6], &cell_max[6], &cell_steps[6]);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "expand_c")==0){
+            sscanf(buffer,"%s %lf %lf %d",keyword,&cell_min[7], &cell_max[7], &cell_steps[7]);
+            sprintf(keyword,"void");
+        }
         else if(strcmp(keyword, "confidence_level")==0){
             sscanf(buffer,"%s %lf",keyword,&threshold_accuracy);
             sprintf(keyword,"void");
@@ -127,6 +347,17 @@ int main(int argc, char *argv[]){
         else if(strcmp(keyword, "cutoff_rmsd")==0){
             sscanf(buffer,"%s %lf",keyword,&cutoff_RMSD);
             sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "powder")==0){
+            sscanf(buffer,"%s %d",keyword,&ZCWg);
+            sprintf(keyword,"void");
+
+            if((ZCWg!=49)&&(ZCWg!=99)&&(ZCWg!=143)&&(ZCWg!=199)&&(ZCWg!=299)&&(ZCWg!=537)&&(ZCWg!=1153)){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: Invalid powder averaging value of %d defined; allowed values are 49, 99, 143, 199, 299, 537, and 1153\n",ZCWg);
+                fclose(error_file);
+                exit(1);
+            }
         }
         //These calls are counted to determine the number of curves, bonds, and constraints, but they are not read yet.
         else if(strcmp(keyword, "surface-REDOR")==0){
@@ -173,6 +404,8 @@ int main(int argc, char *argv[]){
 
     for(i=0;i<N_curves;i++){
         REDOR[i].order_parameter=1.;
+        REDOR[i].NA=1.;
+        REDOR[i].ZCWg=ZCWg;
     }
 
     int counter=0;
@@ -296,27 +529,33 @@ int main(int argc, char *argv[]){
                         fgets(buffer, sizeof(buffer), input);
                         sscanf(buffer,"%s",keyword);
 
-                       if(strcmp(keyword, "recoupled_spins")==0){
-                       char *ptr = buffer, word[32];
-                       sscanf(ptr,"%s",word);
-                       ptr = strstr(ptr, word);
-                       ptr += strlen(word); //skip the keyword
-                       j=0;
-                        while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR[i].recoupled.push_back(0);
-                            REDOR[i].recoupled[j]=atoi(word)-1;
-                            ptr = strstr(ptr, word);  // Find where the current word starts.
-                            ptr += strlen(word); // Skip past the current word.
-                            j++;
-                        }
-                        if(REDOR[i].recoupled.size()>1){
-                           error_file=fopen(error_filename,"a");
-                           fprintf(error_file, "\nWARNING: calculated curve for %s might be inacurate at longer recoupling times, using root-sum-square dipole over recoupled spins.\n", REDOR[counter].filename);
-                           fclose(error_file);
+                        if(strcmp(keyword, "recoupled_spins")==0){
+                            char *ptr = buffer, word[32];
+                            sscanf(ptr,"%s",word);
+                            ptr = strstr(ptr, word);
+                            ptr += strlen(word); //skip the keyword
+                            j=0;
+                            while((sscanf(ptr,"%s",word)) == 1) {
+                                REDOR[i].recoupled.push_back(0);
+                                REDOR[i].recoupled[j]=atoi(word)-1;
+                                ptr = strstr(ptr, word);  // Find where the current word starts.
+                                ptr += strlen(word); // Skip past the current word.
+                                j++;
+                            }
                         }
 
-                    }
-                       else{
+                        else if(strcmp(keyword, "recoupled_element")==0){
+                            char elem[3];
+                            sscanf(buffer,"%s %s",keyword,elem);
+
+                            for(j=0;j<N_atoms;j++){
+                                if(strcmp(elem,element[j])==0){
+                                    REDOR[i].recoupled.push_back(j);
+                                }
+                            }
+                        }
+
+                        else{
                            error_file=fopen(error_filename,"a");
                            fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                            fclose(error_file);
@@ -341,22 +580,22 @@ int main(int argc, char *argv[]){
                         fgets(buffer, sizeof(buffer), input);
                         sscanf(buffer,"%s",keyword);
 
-                       if(strcmp(keyword, "detected_spins")==0){
-                       char *ptr = buffer, word[32];
-                       sscanf(ptr,"%s",word);
-                       ptr = strstr(ptr, word);
-                       ptr += strlen(word); //skip the keyword
-                       j=0;
-                        while((sscanf(ptr,"%s",word)) == 1) {
-                            REDOR[i].detected.push_back(0);
-                            REDOR[i].detected[j]=atoi(word)-1;
-                            ptr = strstr(ptr, word);  // Find where the current word starts.
-                            ptr += strlen(word); // Skip past the current word.
-                            j++;
-                        }
+                        if(strcmp(keyword, "detected_spins")==0){
+                            char *ptr = buffer, word[32];
+                            sscanf(ptr,"%s",word);
+                            ptr = strstr(ptr, word);
+                            ptr += strlen(word); //skip the keyword
+                            j=0;
+                            while((sscanf(ptr,"%s",word)) == 1) {
+                                REDOR[i].detected.push_back(0);
+                                REDOR[i].detected[j]=atoi(word)-1;
+                                ptr = strstr(ptr, word);  // Find where the current word starts.
+                                ptr += strlen(word); // Skip past the current word.
+                                j++;
+                            }
 
-                    }
-                       else{
+                        }
+                        else{
                            error_file=fopen(error_filename,"a");
                            fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
                            fclose(error_file);
@@ -364,6 +603,41 @@ int main(int argc, char *argv[]){
                         }
                     }
 
+
+                    else if(strcmp(keyword, "recoupled_element")==0){
+                        char elem[3], *ptr = buffer, word[32];
+                        sscanf(buffer,"%s %s",keyword,elem);
+
+                        for(j=0;j<N_atoms;j++){
+                            if(strcmp(elem,element[j])==0)
+                                REDOR[i].recoupled.push_back(j);
+                        }
+
+                        fgets(buffer, sizeof(buffer), input);
+                        sscanf(buffer,"%s",keyword);
+
+                        if(strcmp(keyword, "detected_spins")==0){
+                            char *ptr = buffer, word[32];
+                            sscanf(ptr,"%s",word);
+                            ptr = strstr(ptr, word);
+                            ptr += strlen(word); //skip the keyword
+                            j=0;
+                            while((sscanf(ptr,"%s",word)) == 1) {
+                                REDOR[i].detected.push_back(0);
+                                REDOR[i].detected[j]=atoi(word)-1;
+                                ptr = strstr(ptr, word);  // Find where the current word starts.
+                                ptr += strlen(word); // Skip past the current word.
+                                j++;
+                            }
+
+                        }
+                        else{
+                           error_file=fopen(error_filename,"a");
+                           fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
+                           fclose(error_file);
+                           exit(1);
+                        }
+                    }
                     else{
                         error_file=fopen(error_filename,"a");
                         fprintf(error_file, "\nERROR: missing coupled spins for %s, exiting.\n", REDOR[counter].filename);
@@ -372,6 +646,7 @@ int main(int argc, char *argv[]){
                     }
                     i++;
                     counter++;
+                    sprintf(keyword,"void");
             }//intramolecular curve
 
             else if(strcmp(keyword, "distance_constraint")==0){
@@ -476,9 +751,9 @@ int main(int argc, char *argv[]){
                     fprintf(error_file, "\nERROR: Order parameter given for an inexistent REDOR curve\n");
                     fclose(error_file);
                 }
-                else if(S>1.0 || S<=0.0){
+                else if(S<=0.0){
                     error_file=fopen(error_filename,"a");
-                    fprintf(error_file, "\nERROR: Illegal order parameter for curve %d; must be between 0 and 1.\n",index);
+                    fprintf(error_file, "\nERROR: Illegal order parameter for curve %d; must be greater than 0.\n",index);
                     fclose(error_file);
                     exit(1);
                 }
@@ -487,107 +762,63 @@ int main(int argc, char *argv[]){
                 }
                 sprintf(keyword,"void");
             }
+
+            else if(strcmp(keyword, "abundance")==0){//given in percent
+                int index;
+                double NA;
+                sscanf(buffer,"%s %d %lf",keyword,&index, &NA);
+                NA=NA/100.;
+                meticulous=1;
+
+                if(index>N_curves){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Isotope abundance given for an inexistent REDOR curve\n");
+                    fclose(error_file);
+                }
+                else if(NA>1.0 || NA<=0.0){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Illegal isotope abundance for curve %d; must be between 0 and 100.\n",index);
+                    fclose(error_file);
+                    exit(1);
+                }
+                else{
+                    REDOR[index-1].NA=NA;
+                }
+                sprintf(keyword,"void");
+            }
         }//end while
     fclose(input);
+
+    //Stopping the calculation if no unit cell is defined and the cell-specific manipulations are called
+    if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.)){
+        for(i=0;i<8;i++){
+            if(cell_steps[i]>1){
+                error_file=fopen(error_filename,"a");
+                fprintf(error_file, "\nERROR: Unit cell scaling may only be used when a unit cell is defined.\n");
+                fclose(error_file);
+                exit(1);
+            }
+        }
+    }
 
     //In the event that there are only 1 or 2 spins the fast approach is equivalent to the meticulous one.
     int metic[N_curves];
     for(i=0;i<N_curves;i++){
         metic[i]=0;
+        if(REDOR[i].type!=0)
+            metic[i]=1;
     }
     if(meticulous==1){
         for(i=0;i<N_curves;i++){
-            if(REDOR[i].detected.size()>2)
                 metic[i]=1;
-            else
-                metic[i]=0;
         }
     }
 
-    //Next we read the provided starting mol2 file to extract the atomic coordinates and bonding connectivities.
-    //The bonding connectivities are used when determining which atoms are affected by a given rotation.
-    int mol2_len=strlen(mol2_filename);
-    const char *filetype = &mol2_filename[mol2_len-5];
-    if(strcmp(filetype,".mol2")!=0){
-        error_file=fopen(error_filename,"a");
-        fprintf(error_file, "\nERROR: Structure must be provided as a *.mol2 file\n");
-        fclose(error_file);
-        exit(1);
-    }
-
-    mol2_file=fopen(mol2_filename, "r");
-
-    if(mol2_file==NULL){
-        error_file=fopen(error_filename,"a");
-        fprintf(error_file, "\nERROR: mol2 file '%s' not found\n", mol2_filename);
-        fclose(error_file);
-        exit(1);
-    }
-
-    //First the program extracts the line numbers where the atom and bond tables begin, in addition to the number of atoms and bonds.
-    i=j=0;
-    while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
-        sscanf(buffer,"%s",keyword);
-            if(strcmp(keyword, "@<TRIPOS>MOLECULE")==0){
-                fgets(buffer, sizeof(buffer), mol2_file);
-                fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %d",&N_atoms, &N_bonds);
-                i++; j++;
-                i++; j++;
-            }
-            if(strcmp(keyword, "@<TRIPOS>ATOM")==0){
-                line_Atoms = i;
-                }
-            if(strcmp(keyword, "@<TRIPOS>BOND")==0){
-                line_Bonds = j;
-            }
-            i++; j++;
-            }
-    fclose(mol2_file);
-
-    //Now knowing how many bonds and atoms there are the following variables are created.
-    //Atom variables
-    vector< vector<double> > xyz;
-    xyz.resize(N_atoms, vector<double>(3,0.));
-    char element[N_atoms][3], atom_type[N_atoms][8];
-    int atom_id[N_atoms];
-    //bond variables
-    int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
-    char bond_type[N_bonds][20];
-    vector< vector<int> > neighbors;
-    neighbors.resize(N_atoms, vector<int> (1,0));
-    for(i=0;i<N_atoms;i++){
-        neighbors[i][0]=i;
-    }
-
-    //The mol2 file is opened for a second time to extract the coordinates and bond connections.
-    k=1;
-    mol2_file=fopen(mol2_filename,"r");
-    while(fgets(buffer, sizeof(buffer), mol2_file) != NULL){
-        if(k==line_Atoms+1){
-            for(i=0; i<N_atoms; i++){
-                fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
-                //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
-                element[i][0]=toupper(element[i][0]);
-                element[i][1]=tolower(element[i][1]);
-                k++;
-            }}
-        else if(k==line_Bonds){
-            for(i=0; i<N_bonds; i++){
-                fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %d %d %s", &bond_id[i], &ori_atom_id[i], &tar_atom_id[i], bond_type[i]);
-                neighbors[ori_atom_id[i]-1].push_back(tar_atom_id[i]-1);
-                neighbors[tar_atom_id[i]-1].push_back(ori_atom_id[i]-1);
-                k++;
-            }}
-        else{
-            k++;
-        }
-    }
-    fclose(mol2_file);
-
-    center_structure(N_atoms,xyz);
+    //If it is a surface structure, it is centered along x and y
+    //If it is a bulk solid, is it centered along all three directions
+    //If a cell was specified, it is not recentered as it is assumed to be already centered.
+    if((unit_cell[0]!=1.)||(unit_cell[1]!=1.)||(unit_cell[2]!=1.))
+        center_structure(N_atoms,xyz,bulk);
     k = 0;
 
     //Here the program created tables of Chi^2 values as a function of distance and standard deviation of distance
@@ -599,8 +830,6 @@ int main(int argc, char *argv[]){
         REDOR[i].X2.resize(200,vector<double>(101,0.));
     }
 
-    REDORs.resize(10000, vector<double>(9,0.));
-    generate_REDORs(REDORs);
     printf("\n");
     fprintf(log_file,"\n");
 
@@ -634,6 +863,11 @@ int main(int argc, char *argv[]){
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
     get_affected_atoms(N_rotatable_bonds,bond,neighbors);
+
+    //getting information about the different fragments in the structure
+    struct fragments fragment;
+    get_fragments(N_atoms,neighbors,&fragment,xyz,cell);
+
 
     //After all the affected atoms were calculated we add the pairs with distance constraints to the lists
     //of neighbors so that collisions aren't triggered when working with things such as flexible rings
@@ -681,6 +915,18 @@ int main(int argc, char *argv[]){
     if(N_steps_Z==1)
         z_step=0.;
 
+    //additions made to manipulate crystal cell dimensions
+    long long int cell_mod[8];
+    double cell_step[8];
+    for(i=7;i>=0;i--){
+        cell_mod[i] = iterations;
+        iterations = iterations * (long long int)cell_steps[i];
+        cell_step[i] = (cell_max[i]-cell_min[i])/(cell_steps[i]-1);
+        if(cell_steps[i]==1)
+            cell_step[i]=0.;
+    }
+    //end of new additions to manipulate the crystal cell dimensions
+
     vector< vector<double> > xyz_ref;
     vector< vector<double> > xyz_best;
     xyz_ref.resize(N_atoms, vector<double>(3,0.));
@@ -709,12 +955,12 @@ int main(int argc, char *argv[]){
     //We also store the distance and std indices for this structure in order to supply its
     //simulated curves.
     printf("_____________________________________________________________________________________________________\n");
-    printf("\nWill perform a search over a total of %d conformations\n",iterations);
+    printf("\nWill perform a search over a total of %lld conformations\n",iterations);
     printf("Searching for the best-fit structure\n");
     printf("_____________________________________________________________________________________________________\n\n");
 
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
-    fprintf(log_file,"\nWill perform a search over a total of %d conformations\n",iterations);
+    fprintf(log_file,"\nWill perform a search over a total of %lld conformations\n",iterations);
     fprintf(log_file,"Searching for the best-fit structure\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
     int top_thread;
@@ -731,14 +977,23 @@ int main(int argc, char *argv[]){
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
+        //new code for manipulating the cell dimensions
+        long long int cell_position[8], cell_nom=0;
+        for(jj=0;jj<8;jj++){
+            if(cell_steps[jj]>1){
+            cell_position[jj] = int(floor((it-cell_nom)/cell_mod[jj]));
+            cell_nom += cell_position[jj]*cell_mod[jj];
+        }}
+        //end of new code for the cell dimensions, new additions for cell also below in the equations (-cell_nom)
+
         //The calculations return the index for each of the structural variations:
         //z distance, y rotation, x rotation, bond rotations
-        int z_position = int(floor(it/z_mod));
-        int y_position = int(floor((it-z_position*z_mod)/y_mod));
-        int x_position = int(floor((it-z_position*z_mod-y_position*y_mod)/x_mod));
+        int z_position = int(floor((it-cell_nom)/z_mod));
+        int y_position = int(floor((it-z_position*z_mod-cell_nom)/y_mod));
+        int x_position = int(floor((it-z_position*z_mod-y_position*y_mod-cell_nom)/x_mod));
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-            nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
+            nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod-cell_nom;
             for(kk=jj+1; kk<N_rotatable_bonds;kk++){
                 nominator=nominator - bond_position[kk] * bond[kk].mod;
             }
@@ -746,10 +1001,41 @@ int main(int argc, char *argv[]){
         }
 
         //Having found the indices for the different variations, the structural modifications are now done.
+
+        //cell modifications
+        if(cell_steps[0]>1)
+        swell_structure_sym(N_atoms,cell_step[0]*cell_position[0]+cell_min[0],xyz_priv,cell);
+        if(cell_steps[1]>1)
+        swell_structure_a(N_atoms,cell_step[1]*cell_position[1]+cell_min[1],xyz_priv,cell);
+        if(cell_steps[2]>1)
+        swell_structure_b(N_atoms,cell_step[2]*cell_position[2]+cell_min[2],xyz_priv,cell);
+        if(cell_steps[3]>1)
+        swell_structure_c(N_atoms,cell_step[3]*cell_position[3]+cell_min[3],xyz_priv,cell);
+        if(cell_steps[4]>1)
+        expand_structure_sym(N_atoms,cell_step[4]*cell_position[4]+cell_min[4],xyz_priv,&fragment,cell);
+        if(cell_steps[5]>1)
+        expand_structure_a(N_atoms,cell_step[5]*cell_position[5]+cell_min[5],xyz_priv,&fragment,cell);
+        if(cell_steps[6]>1)
+        expand_structure_b(N_atoms,cell_step[6]*cell_position[6]+cell_min[6],xyz_priv,&fragment,cell);
+        if(cell_steps[7]>1)
+        expand_structure_c(N_atoms,cell_step[7]*cell_position[7]+cell_min[7],xyz_priv,&fragment,cell);
+
+        //new cell dimensions stored on the thread to save in mol2 file for reference
+        vector<double> new_unit_cell;// a,b,c, alpha, beta, gamma
+        new_unit_cell.resize(6,1.);
+        new_unit_cell[0] = unit_cell[0] * (cell_step[0]*cell_position[0]+cell_min[0]) * (cell_step[1]*cell_position[1]+cell_min[1]) * (cell_step[4]*cell_position[4]+cell_min[4]) * (cell_step[5]*cell_position[5]+cell_min[5]);
+        new_unit_cell[1] = unit_cell[1] * (cell_step[0]*cell_position[0]+cell_min[0]) * (cell_step[2]*cell_position[2]+cell_min[2]) * (cell_step[4]*cell_position[4]+cell_min[4]) * (cell_step[6]*cell_position[6]+cell_min[6]);
+        new_unit_cell[2] = unit_cell[2] * (cell_step[0]*cell_position[0]+cell_min[0]) * (cell_step[3]*cell_position[3]+cell_min[3]) * (cell_step[4]*cell_position[4]+cell_min[4]) * (cell_step[7]*cell_position[7]+cell_min[7]);
+        new_unit_cell[3] = unit_cell[3];
+        new_unit_cell[4] = unit_cell[4];
+        new_unit_cell[5] = unit_cell[5];
+
+        //global structure modifications
         translate_molecule_Z(N_atoms,xyz_priv,z_step*z_position+z_min);
         rotate_molecule_around_Y(N_atoms,xyz_priv,y_angle*y_position);
         rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
 
+        //bond-specific modifications
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
             if(bond[jj].type==0){//bond rotation
                 angle=2.*Pi/bond[jj].N_steps*bond_position[jj];
@@ -865,7 +1151,7 @@ int main(int argc, char *argv[]){
                         curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                      }
                     else
-                        curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,REDORs);
+                        curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv);
 
                     REDOR[kk].chi2_min = (curve_chi2[kk]<REDOR[kk].chi2_min)*curve_chi2[kk] + (curve_chi2[kk]>=REDOR[kk].chi2_min)*REDOR[kk].chi2_min;
                     chi2 = chi2 + curve_chi2[kk];
@@ -885,6 +1171,9 @@ int main(int argc, char *argv[]){
 
                 //This structure overwrites xyz_best
                 copy_structure(N_atoms,xyz_priv,xyz_best);
+                for(kk=0;kk<6;kk++){
+                    fitted_unit_cell[kk]=new_unit_cell[kk];
+                }
                 printf("New Chi2 minimum at %lf\n",chi2_min);
                 fprintf(log_file,"New Chi2 minimum at %lf\n",chi2_min);
 
@@ -892,6 +1181,10 @@ int main(int argc, char *argv[]){
                 for(kk=0; kk<N_curves; kk++){
                     REDOR[kk].d_index[0]=d_indices[kk];
                     REDOR[kk].std_index[0]=std_indices[kk];
+                    REDOR[kk].d_index[1]=d_indices[kk];
+                    REDOR[kk].std_index[1]=std_indices[kk];
+                    REDOR[kk].d_index[2]=d_indices[kk];
+                    REDOR[kk].std_index[2]=std_indices[kk];
                 }
 
                 //It is then saved as a mol2 file
@@ -942,10 +1235,13 @@ int main(int argc, char *argv[]){
 
     for(i=0;i<N_curves;i++){
         copy_structure(N_atoms,xyz_best,xyz_it[i][0]);
+        copy_structure(N_atoms,xyz_best,xyz_it[i][1]);
+        copy_structure(N_atoms,xyz_best,xyz_it[i][2]);
     }
 
-    //surface atoms are added to the mol2 file for plotting purposes.
-    add_surface(best_filename);
+    //surface atoms are added to the mol2 file for plotting purposes if it is not a bulk material
+    if(!bulk)
+        add_surface(best_filename);
 
     //the max_Chi2 function returns the highest allowable Chi^2 value given a minimum value and an error range
     //See numerical recipes in C for a description of the calculation.
@@ -995,18 +1291,50 @@ int main(int argc, char *argv[]){
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
 
-        int z_position = int(floor(it/z_mod));
-        int y_position = int(floor((it-z_position*z_mod)/y_mod));
-        int x_position = int(floor((it-z_position*z_mod-y_position*y_mod)/x_mod));
+        //new code for manipulating the cell dimensions
+        long long int cell_position[8], cell_nom=0;
+        for(jj=0;jj<8;jj++){
+            if(cell_steps[jj]>1){
+            cell_position[jj] = int(floor((it-cell_nom)/cell_mod[jj]));
+            cell_nom += cell_position[jj]*cell_mod[jj];
+        }}
+        //end of new code for the cell dimensions, new additions for cell also below in the equations (-cell_nom)
+
+        //The calculations return the index for each of the structural variations:
+        //z distance, y rotation, x rotation, bond rotations
+        int z_position = int(floor((it-cell_nom)/z_mod));
+        int y_position = int(floor((it-z_position*z_mod-cell_nom)/y_mod));
+        int x_position = int(floor((it-z_position*z_mod-y_position*y_mod-cell_nom)/x_mod));
 
         for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-            nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
+            nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod-cell_nom;
             for(kk=jj+1; kk<N_rotatable_bonds;kk++){
                 nominator=nominator - bond_position[kk] * bond[kk].mod;
             }
             bond_position[jj] = int(floor(nominator/bond[jj].mod));
         }
 
+        //Having found the indices for the different variations, the structural modifications are now done.
+
+        //cell modifications
+        if(cell_steps[0]>1)
+        swell_structure_sym(N_atoms,cell_step[0]*cell_position[0]+cell_min[0],xyz_priv,cell);
+        if(cell_steps[1]>1)
+        swell_structure_a(N_atoms,cell_step[1]*cell_position[1]+cell_min[1],xyz_priv,cell);
+        if(cell_steps[2]>1)
+        swell_structure_b(N_atoms,cell_step[2]*cell_position[2]+cell_min[2],xyz_priv,cell);
+        if(cell_steps[3]>1)
+        swell_structure_c(N_atoms,cell_step[3]*cell_position[3]+cell_min[3],xyz_priv,cell);
+        if(cell_steps[4]>1)
+        expand_structure_sym(N_atoms,cell_step[4]*cell_position[4]+cell_min[4],xyz_priv,&fragment,cell);
+        if(cell_steps[5]>1)
+        expand_structure_a(N_atoms,cell_step[5]*cell_position[5]+cell_min[5],xyz_priv,&fragment,cell);
+        if(cell_steps[6]>1)
+        expand_structure_b(N_atoms,cell_step[6]*cell_position[6]+cell_min[6],xyz_priv,&fragment,cell);
+        if(cell_steps[7]>1)
+        expand_structure_c(N_atoms,cell_step[7]*cell_position[7]+cell_min[7],xyz_priv,&fragment,cell);
+
+        //global structure modifications
         translate_molecule_Z(N_atoms,xyz_priv,z_step*z_position+z_min);
         rotate_molecule_around_Y(N_atoms,xyz_priv,y_angle*y_position);
         rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
@@ -1119,7 +1447,7 @@ int main(int argc, char *argv[]){
                 if(metic[kk]==0)
                     curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                 else
-                    curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,REDORs);
+                    curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv);
 
                 if(curve_chi2[kk]>REDOR[kk].chi2_max){
                     check_chi2_threshold++;
@@ -1191,6 +1519,10 @@ int main(int argc, char *argv[]){
         fclose(error_file);
         sprintf(overlay_filename, "%s_struct1.mol2", filename_base);
         remove(overlay_filename);
+        if(meticulous==0)
+            write_fits(filename_base,support,REDOR);
+        else
+            write_fits_meticulous(filename_base,support,REDOR,xyz_it);
         exit(1);
     }
 
@@ -1221,15 +1553,15 @@ int main(int argc, char *argv[]){
     fprintf(log_file,"\nOverlaying structures\n");
 
     //for primary structures
-    compile_mol2_files(filename_base, acceptable_structures);
+    compile_mol2_files(filename_base, acceptable_structures,bulk);
     printf("_____________________________________________________________________________________________________\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n");
     fclose(log_file);
-    create_cif(overlay_filename, N_atoms+5);
+    create_cif(overlay_filename, N_atoms+5-5*bulk, fitted_unit_cell);
     log_file=fopen("log.txt","a");
 
     //for all structures
-    compile_all_mol2_files(filename_base, acceptable_structures, other_structures);
+    compile_all_mol2_files(filename_base, acceptable_structures, other_structures,bulk);
 
     //write out the fitted REDOR curve and ranges.
     printf("\n_____________________________________________________________________________________________________\n");
@@ -1277,7 +1609,7 @@ int main(int argc, char *argv[]){
             int Npoints=REDOR[i].DSS0.size();
             REDOR[i].DSS0sim_prev.resize(Npoints, 0.);
             REDOR[i].DSS0sim_new.resize(Npoints, 0.);
-            precalculate_dephasing(REDOR[i].DSS0sim_prev,REDOR[i],xyz_best,REDORs);
+            precalculate_dephasing(REDOR[i].DSS0sim_prev,REDOR[i],xyz_best);
         }
 
         double current_CL=0.;
@@ -1308,18 +1640,50 @@ int main(int argc, char *argv[]){
                 double curve_chi2[N_curves][10];
                 copy_structure(N_atoms,xyz_ref,xyz_priv);
 
-                int z_position = int(floor(it/z_mod));
-                int y_position = int(floor((it-z_position*z_mod)/y_mod));
-                int x_position = int(floor((it-z_position*z_mod-y_position*y_mod)/x_mod));
+                //new code for manipulating the cell dimensions
+                long long int cell_position[8], cell_nom=0;
+                for(jj=0;jj<8;jj++){
+                    if(cell_steps[jj]>1){
+                    cell_position[jj] = int(floor((it-cell_nom)/cell_mod[jj]));
+                    cell_nom += cell_position[jj]*cell_mod[jj];
+                }}
+                //end of new code for the cell dimensions, new additions for cell also below in the equations (-cell_nom)
+
+                //The calculations return the index for each of the structural variations:
+                //z distance, y rotation, x rotation, bond rotations
+                int z_position = int(floor((it-cell_nom)/z_mod));
+                int y_position = int(floor((it-z_position*z_mod-cell_nom)/y_mod));
+                int x_position = int(floor((it-z_position*z_mod-y_position*y_mod-cell_nom)/x_mod));
 
                 for(jj=N_rotatable_bonds-1;jj>=0;jj--){
-                    nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod;
+                    nominator=it-z_position*z_mod-y_position*y_mod-x_position*x_mod-cell_nom;
                     for(kk=jj+1; kk<N_rotatable_bonds;kk++){
                         nominator=nominator - bond_position[kk] * bond[kk].mod;
                     }
                     bond_position[jj] = int(floor(nominator/bond[jj].mod));
                 }
 
+                //Having found the indices for the different variations, the structural modifications are now done.
+
+                //cell modifications
+                if(cell_steps[0]>1)
+                swell_structure_sym(N_atoms,cell_step[0]*cell_position[0]+cell_min[0],xyz_priv,cell);
+                if(cell_steps[1]>1)
+                swell_structure_a(N_atoms,cell_step[1]*cell_position[1]+cell_min[1],xyz_priv,cell);
+                if(cell_steps[2]>1)
+                swell_structure_b(N_atoms,cell_step[2]*cell_position[2]+cell_min[2],xyz_priv,cell);
+                if(cell_steps[3]>1)
+                swell_structure_c(N_atoms,cell_step[3]*cell_position[3]+cell_min[3],xyz_priv,cell);
+                if(cell_steps[4]>1)
+                expand_structure_sym(N_atoms,cell_step[4]*cell_position[4]+cell_min[4],xyz_priv,&fragment,cell);
+                if(cell_steps[5]>1)
+                expand_structure_a(N_atoms,cell_step[5]*cell_position[5]+cell_min[5],xyz_priv,&fragment,cell);
+                if(cell_steps[6]>1)
+                expand_structure_b(N_atoms,cell_step[6]*cell_position[6]+cell_min[6],xyz_priv,&fragment,cell);
+                if(cell_steps[7]>1)
+                expand_structure_c(N_atoms,cell_step[7]*cell_position[7]+cell_min[7],xyz_priv,&fragment,cell);
+
+                //global structure modifications
                 translate_molecule_Z(N_atoms,xyz_priv,z_step*z_position+z_min);
                 rotate_molecule_around_Y(N_atoms,xyz_priv,y_angle*y_position);
                 rotate_molecule_around_X(N_atoms,xyz_priv,x_angle*x_position);
@@ -1426,7 +1790,7 @@ int main(int argc, char *argv[]){
 
                     double chi2=0;
                     for(kk=0; kk<N_curves; kk++){
-                        if(calculate_curve_Chi2_multi(curve_chi2[kk],REDOR[kk],xyz_priv,REDORs)>REDOR[kk].chi2_max){
+                        if(calculate_curve_Chi2_multi(curve_chi2[kk],REDOR[kk],xyz_priv)>REDOR[kk].chi2_max){
                             check_chi2_threshold++;
                             break;
                         }
@@ -1487,7 +1851,7 @@ int main(int argc, char *argv[]){
 
             for(i=0; i<N_curves; i++){
                 int Npoints=find_Npoints(REDOR[i].filename);
-                precalculate_dephasing(REDOR[i].DSS0sim_new,REDOR[i],xyz_minor[found_structures-1],REDORs);
+                precalculate_dephasing(REDOR[i].DSS0sim_new,REDOR[i],xyz_minor[found_structures-1]);
                 for(j=0;j<Npoints;j++){
                     REDOR[i].DSS0sim_prev[j]=(1.-new_weight)*REDOR[i].DSS0sim_prev[j] + new_weight*REDOR[i].DSS0sim_new[j];
                 }
@@ -1502,7 +1866,8 @@ int main(int argc, char *argv[]){
             char conformer_filename[128];
             sprintf(conformer_filename, "%s_conformer_%d_%.2lf.mol2",filename_base,i+1,weights[i]);
             write_mol2(conformer_filename, N_bonds, atom_id, element, xyz_minor[i], atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
-            add_surface(conformer_filename);
+            if(!bulk)
+                add_surface(conformer_filename);
         }
         printf("\n_____________________________________________________________________________________________________\n");
         printf("\nThe search for minor surface species has completed.\n");

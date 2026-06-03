@@ -18,7 +18,7 @@ struct Bond{
 void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> > &neighbors){
     //Same function of get_aff_atoms() but uses neighbors and should be faster.
 
-    int found,start,check=0,i,j,k,l;
+    int found=1,start,check=0,i,j,k,l;
 
     for(i=0;i<N_rotatable_bonds;i++){
         bond[i].N_aff_atoms=1;
@@ -34,8 +34,7 @@ void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> >
 
     for(k=0;k<N_rotatable_bonds;k++){
         start=0;
-        do{
-            found=1;
+
             for(i=start;i<bond[k].N_aff_atoms;i++){
                 for(j=1;j<neighbors[bond[k].affected_atom[i]].size();j++){
                     for(l=0;l<bond[k].affected_atom.size();l++){
@@ -51,18 +50,14 @@ void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> >
                     }//loop over current affected atoms to check
                     if(check==0){
                         bond[k].affected_atom.push_back(neighbors[bond[k].affected_atom[i]][j]);
-                        found=1;
                         bond[k].N_aff_atoms++;
                         start++;
                     }
                 }//loop over neighbors of affected atom
             }//loop over last shell of affected_atoms
-        }while(found==0);
 
         if(bond[k].type>=3){ //bend_symmetric and stretch_symmetric has two sets of affected atoms
             start=0;
-            do{
-                found=1;
                 for(i=start;i<bond[k].N_aff_atoms2;i++){
                     for(j=1;j<neighbors[bond[k].affected_atom2[i]].size();j++){
                         for(l=0;l<bond[k].affected_atom2.size();l++){
@@ -78,13 +73,11 @@ void get_affected_atoms(int N_rotatable_bonds, Bond *bond, vector< vector<int> >
                         }//loop over current affected atoms to check
                         if(check==0){
                             bond[k].affected_atom2.push_back(neighbors[bond[k].affected_atom2[i]][j]);
-                            found=1;
                             bond[k].N_aff_atoms2++;
                             start++;
                         }
                     }//loop over neighbors of affected atom
                 }//loop over last shell of affected_atoms
-            }while(found==0);
         }
 
     }//looping over rotatable bonds
@@ -149,4 +142,3 @@ void get_internuclear_vector(double *bondvector, vector<double> &atom1, vector<d
     bondvector[1]=bondvector[1]/len;
     bondvector[2]=bondvector[2]/len;
 }
-

@@ -126,7 +126,7 @@ void add_surface(char *mol2_filename){
     rename(add_surface_filename,mol2_filename);
 }
 
-void compile_mol2_files(char *base_filename, int num_files){
+void compile_mol2_files(char *base_filename, int num_files, int bulk){
     //This function combines a sequence of mol2 files into a single mol2 file showing their overlay
 
     char error_filename[128], buffer[120];
@@ -141,7 +141,8 @@ void compile_mol2_files(char *base_filename, int num_files){
         //add surface molecules to each structure before reading
         char structure_filename_temp[100];
         sprintf(structure_filename_temp, "%s_struct%d.mol2", base_filename, i);
-        add_surface(structure_filename_temp);
+        if(!bulk)
+            add_surface(structure_filename_temp);
     }
 
     //1) Open structure mol2 file and find Number of Atoms/Bonds & line  numbers for atom and bond sections
@@ -256,7 +257,7 @@ void compile_mol2_files(char *base_filename, int num_files){
     fclose(out);
 }
 
-void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_other_files){
+void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_other_files, int bulk){
     //This function performs the same task as compile_mol2_files, however it will look for files also starting with other_
     //It also removes the said files after they have been read.
     char error_filename[128], other_base_filename[128],overlay_filename[128],structure_filename_temp[128], buffer[128], arguments[8][16];;
@@ -369,7 +370,8 @@ void compile_all_mol2_files(char *base_filename, int num_primary_files, int num_
     //6) Add the atom section from each individual other file
     for(k=1; k<num_other_files+1; k++){
         sprintf(structure_filename_temp, "%s%d.mol2", other_base_filename, k);
-        add_surface(structure_filename_temp);
+        if(!bulk)
+            add_surface(structure_filename_temp);
         in=fopen(structure_filename_temp, "r");
         out=fopen(overlay_filename, "a");
 

@@ -2,7 +2,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
 #include <vector>
 #include <time.h>
 #include <algorithm>
@@ -105,12 +104,13 @@ int collisions(vector< vector<double> > &xyz, vector< vector<int> > neighbors, d
     int i,j, N_atoms=xyz.size();
     double d,x,y,z;
 
+    if(surface_collision_distance>=0.){
     for(i=0;i<N_atoms;i++){
         if(xyz[i][2]>surface_collision_distance)
             continue;
         if(xyz[i][2]!=0.0)
             return 1;
-        }
+    }}
     for(i=0;i<N_atoms;i++){
         for(j=i+1;j<N_atoms; j++){
             x=xyz[i][0]-xyz[j][0];

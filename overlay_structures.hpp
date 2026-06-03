@@ -1,20 +1,31 @@
 #include "on-the-fly-REDOR.hpp"
 
-void center_structure(int N_atoms, vector< vector<double> > &xyz){
+void center_structure(int N_atoms, vector< vector<double> > &xyz, int bulk){
 //This function will recenter the structure at the origin on the surface to enable optimal viewing of the overlays
     int i;
-    double x_ave=0., y_ave=0.;
+    double x_ave=0., y_ave=0., z_ave=0.;
 
     for(i=0;i<N_atoms;i++){
         x_ave=x_ave+xyz[i][0];
-        y_ave=y_ave+xyz[i][0];
+        y_ave=y_ave+xyz[i][1];
     }
     x_ave=x_ave/N_atoms;
     y_ave=y_ave/N_atoms;
 
     for(i=0;i<N_atoms;i++){
         xyz[i][0]=xyz[i][0]-x_ave;
-        xyz[i][0]=xyz[i][0]-x_ave;
+        xyz[i][1]=xyz[i][1]-y_ave;
+    }
+
+    //also average z coordinate for pulse structure
+    if(bulk){
+        for(i=0;i<N_atoms;i++){
+            z_ave=z_ave+xyz[i][2];
+        }
+        z_ave=z_ave/N_atoms;
+        for(i=0;i<N_atoms;i++){
+            xyz[i][2]=xyz[i][2]-z_ave;
+        }
     }
 }
 

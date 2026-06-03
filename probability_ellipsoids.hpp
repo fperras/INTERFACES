@@ -31,7 +31,7 @@ void generate_rotation_matrix(double (*R)[3],double phi, double theta, double ps
     R[2][2]= ct;
 }
 
-void create_cif( char *compiled_mol2_filename, int N_atoms){
+void create_cif( char *compiled_mol2_filename, int N_atoms, vector<double> &unit_cell){
    //This function will read a mol2 file containing multiple structures in an overlay
     //and generate a cif file containing the average structure with error ellipsoids
     char error_filename[128];
@@ -81,6 +81,8 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     coordinates.resize(N_atoms, vector< vector<double> >(N_structures,vector<double>(3,0.)));
     vector< vector<double> >  ave_coordinates;
     ave_coordinates.resize(N_atoms, vector<double>(3,0.));
+    vector< vector<double> >  frac_coordinates;
+    frac_coordinates.resize(N_atoms, vector<double>(3,0.));
 
     fp=fopen(compiled_mol2_filename,"r");
     i=1;
@@ -110,6 +112,18 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
         }
     }
 
+    //Determining whether to use the fitted unit cell, or a stock one for bulk/surface sites
+    if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.)){
+        unit_cell[0]=unit_cell[1]=unit_cell[2]=100.;
+        unit_cell[3]=unit_cell[4]=unit_cell[5]=Pi/2.;
+    }
+
+    //converting the average xyz coordinates to fractional coordinates
+    vector< vector<double> > cell;
+    cell.resize(3, vector<double>(3,0.));
+    calc_cell_matrix(cell,unit_cell);
+    xyz_to_frac(N_atoms,ave_coordinates,frac_coordinates,cell);
+
     cif=fopen(cif_filename,"w");
     fprintf(cif,"data_%s\n",cif_filename);
     fprintf(cif,"_symmetry_space_group_name_H-M    'P1'\n");
@@ -118,12 +132,12 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     fprintf(cif,"loop_\n");
     fprintf(cif,"_symmetry_equiv_pos_as_xyz\n");
     fprintf(cif,"  x,y,z\n");
-    fprintf(cif,"_cell_length_a                    100.0\n");
-    fprintf(cif,"_cell_length_b                    100.0\n");
-    fprintf(cif,"_cell_length_c                    100.0\n");
-    fprintf(cif,"_cell_angle_alpha                 90.0000\n");
-    fprintf(cif,"_cell_angle_beta                  90.0000\n");
-    fprintf(cif,"_cell_angle_gamma                 90.0000\n");
+    fprintf(cif,"_cell_length_a                    %lf\n",unit_cell[0]);
+    fprintf(cif,"_cell_length_b                    %lf\n",unit_cell[1]);
+    fprintf(cif,"_cell_length_c                    %lf\n",unit_cell[2]);
+    fprintf(cif,"_cell_angle_alpha                 %lf\n",unit_cell[3]*180./Pi);
+    fprintf(cif,"_cell_angle_beta                  %lf\n",unit_cell[4]*180./Pi);
+    fprintf(cif,"_cell_angle_gamma                 %lf\n",unit_cell[5]*180./Pi);
     fprintf(cif,"loop_\n");
     fprintf(cif,"_atom_site_label\n");
     fprintf(cif,"_atom_site_type_symbol\n");
@@ -134,8 +148,17 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
     fprintf(cif,"_atom_site_adp_type\n");
     fprintf(cif,"_atom_site_occupancy\n");
 
-    for(i=0;i<N_atoms;i++){
-        fprintf(cif,"%s%d    %s    %lf    %lf    %lf    0.100000    Uani    1.00\n",element[i],atom_id[i],element[i],ave_coordinates[i][0]/100.+.5,ave_coordinates[i][1]/100.+.5,ave_coordinates[i][2]/100.);
+    //surface or bulk solids
+    if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.)){
+        for(i=0;i<N_atoms;i++){
+            fprintf(cif,"%s%d    %s    %lf    %lf    %lf    0.100000    Uani    1.00\n",element[i],atom_id[i],element[i],frac_coordinates[i][0]+.5,frac_coordinates[i][1]+.5,frac_coordinates[i][2]);
+        }
+    }
+    //crystalline solids
+    else{
+        for(i=0;i<N_atoms;i++){
+            fprintf(cif,"%s%d    %s    %lf    %lf    %lf    0.100000    Uani    1.00\n",element[i],atom_id[i],element[i],frac_coordinates[i][0],frac_coordinates[i][1],frac_coordinates[i][2]);
+        }
     }
     fprintf(cif,"\nloop_\n");
     fprintf(cif,"_atom_site_aniso_label\n");
@@ -201,6 +224,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
                 rms=rms+pow((R[0][1]*coordinates[i][jj][0]+R[1][1]*coordinates[i][jj][1]+R[2][1]*coordinates[i][jj][2]),2.)/N_structures;
             }
 
+            rms=sqrt(rms);
             if(rms>rms_max[i][1]){
                 rms_max[i][1]= rms;
                 phi_max[i]= phi;
@@ -222,7 +246,6 @@ void create_cif( char *compiled_mol2_filename, int N_atoms){
         rms_max[i][0]=rms_max[i][0]+0.1;
         rms_max[i][1]=rms_max[i][1]+0.1;
         rms_max[i][2]=rms_max[i][2]+0.1;
-
 
         U[0][0]=R[0][0]*rms_max[i][0]*R[0][0] + R[0][1]*rms_max[i][1]*R[0][1] + R[0][2]*rms_max[i][2]*R[0][2];
         U[0][1]=R[0][0]*rms_max[i][0]*R[1][0] + R[0][1]*rms_max[i][1]*R[1][1] + R[0][2]*rms_max[i][2]*R[1][2];

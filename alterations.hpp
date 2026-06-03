@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <vector>
+#include "crystal.hpp"
 using namespace std;
 
 void translate_atom_Z(vector<double> &xyz, double distance){
@@ -207,4 +208,207 @@ void generate_bond_angle_rot_matrix(double(*R)[3], vector<double> &atom1, vector
     cross[2]=bond1[0]*bond2[1]-bond1[1]*bond2[0] + atom2[2];
 
     generate_bond_rot_matrix(R,atom2,cross,angle);
+}
+
+
+//Below are the structural alteration functions that are specific to periodic solids
+//They require the definition of a cell.
+void swell_structure_sym(int N_atoms, double factor, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Expands all unit cell parameters symmetrically by factor, keeping fractional coordinates fixed
+    int i;
+    vector< vector<double> > frac;
+    frac.resize(N_atoms, vector<double>(3,0.));
+    xyz_to_frac(N_atoms,xyz,frac,cell);
+
+    for(i=0;i<N_atoms;i++){
+        frac[i][0] *= factor;
+        frac[i][1] *= factor;
+        frac[i][2] *= factor;
+    }
+
+    frac_to_xyz(N_atoms,xyz,frac,cell);
+}
+
+void swell_structure_a(int N_atoms, double factor, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Expands the 'a' unit cell parameter by factor, keeping fractional coordinates fixed
+    int i;
+    vector< vector<double> > frac;
+    frac.resize(N_atoms, vector<double>(3,0.));
+    xyz_to_frac(N_atoms,xyz,frac,cell);
+
+    for(i=0;i<N_atoms;i++){
+        frac[i][0] *= factor;
+    }
+
+    frac_to_xyz(N_atoms,xyz,frac,cell);
+}
+
+void swell_structure_b(int N_atoms, double factor, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Expands the 'b' unit cell parameter by factor, keeping fractional coordinates fixed
+    int i;
+    vector< vector<double> > frac;
+    frac.resize(N_atoms, vector<double>(3,0.));
+    xyz_to_frac(N_atoms,xyz,frac,cell);
+
+    for(i=0;i<N_atoms;i++){
+        frac[i][1] *= factor;
+    }
+
+    frac_to_xyz(N_atoms,xyz,frac,cell);
+}
+
+void swell_structure_c(int N_atoms, double factor, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Expands the 'c' unit cell parameter by factor, keeping fractional coordinates fixed
+    int i;
+    vector< vector<double> > frac;
+    frac.resize(N_atoms, vector<double>(3,0.));
+    xyz_to_frac(N_atoms,xyz,frac,cell);
+
+    for(i=0;i<N_atoms;i++){
+        frac[i][2] *= factor;
+    }
+
+    frac_to_xyz(N_atoms,xyz,frac,cell);
+}
+
+void expand_structure_sym(int N_atoms, double factor, vector< vector<double> > &xyz, fragments *fragment, vector< vector<double> > &cell){
+    //Expands all unit cell parameters symmetrically by factor, keeping molecular coordinates fixed
+    int i,j;
+
+    vector< vector<double> > frac;
+    frac.resize(fragment->N_fragments, vector<double>(3,0.));
+
+    //copying the fractional coordinates of the fragments and scaling them
+    for (i=0;i<fragment->N_fragments;i++){
+        frac[i][0]=fragment->mol_frac[i][0]*factor;
+        frac[i][1]=fragment->mol_frac[i][1]*factor;
+        frac[i][2]=fragment->mol_frac[i][2]*factor;
+    }
+
+    //temporary copy of the molecule-centered modified xyz coordinates
+    vector< vector<double> > xyz_temp;
+    xyz_temp.resize(fragment->N_fragments, vector<double>(3,0.));
+    frac_to_xyz(fragment->N_fragments,xyz_temp,frac,cell);
+
+    //converting these to xyz differences in Angstrom to apply to each fragment
+    for(i=0;i<fragment->N_fragments;i++){
+        xyz_temp[i][0]=xyz_temp[i][0]-fragment->mol_xyz[i][0];
+        xyz_temp[i][1]=xyz_temp[i][1]-fragment->mol_xyz[i][1];
+        xyz_temp[i][2]=xyz_temp[i][2]-fragment->mol_xyz[i][2];
+    }
+    //Applying these xyz differences to each atom in the structure
+    for(i=0;i<fragment->N_fragments;i++){
+        for(j=0;j<fragment->frag_indices[i].size();j++){
+            xyz[fragment->frag_indices[i][j]][0]+=xyz_temp[i][0];
+            xyz[fragment->frag_indices[i][j]][1]+=xyz_temp[i][1];
+            xyz[fragment->frag_indices[i][j]][2]+=xyz_temp[i][2];
+        }
+    }
+}
+
+void expand_structure_a(int N_atoms, double factor, vector< vector<double> > &xyz, fragments *fragment, vector< vector<double> > &cell){
+    //Expands the 'a' unit cell parameter by factor, keeping molecular coordinates fixed
+    int i,j;
+    vector< vector<double> > frac;
+    frac.resize(fragment->N_fragments, vector<double>(3,0.));
+
+    //copying the fractional coordinates of the fragments and scaling them
+    for (i=0;i<fragment->N_fragments;i++){
+        frac[i][0]=fragment->mol_frac[i][0]*factor;
+        frac[i][1]=fragment->mol_frac[i][1];
+        frac[i][2]=fragment->mol_frac[i][2];
+    }
+
+    //temporary copy of the molecule-centered modified xyz coordinates
+    vector< vector<double> > xyz_temp;
+    xyz_temp.resize(fragment->N_fragments, vector<double>(3,0.));
+    frac_to_xyz(fragment->N_fragments,xyz_temp,frac,cell);
+
+    //converting these to xyz differences in Angstrom to apply to each fragment
+    for(i=0;i<fragment->N_fragments;i++){
+        xyz_temp[i][0]=xyz_temp[i][0]-fragment->mol_xyz[i][0];
+        xyz_temp[i][1]=xyz_temp[i][1]-fragment->mol_xyz[i][1];
+        xyz_temp[i][2]=xyz_temp[i][2]-fragment->mol_xyz[i][2];
+    }
+
+    //Applying these xyz differences to each atom in the structure
+    for(i=0;i<fragment->N_fragments;i++){
+        for(j=0;j<fragment->frag_indices[i].size();j++){
+            xyz[fragment->frag_indices[i][j]][0]+=xyz_temp[i][0];
+            xyz[fragment->frag_indices[i][j]][1]+=xyz_temp[i][1];
+            xyz[fragment->frag_indices[i][j]][2]+=xyz_temp[i][2];
+        }
+    }
+}
+
+void expand_structure_b(int N_atoms, double factor, vector< vector<double> > &xyz, fragments *fragment, vector< vector<double> > &cell){
+    //Expands the 'b' unit cell parameter by factor, keeping molecular coordinates fixed
+    int i,j;
+
+    vector< vector<double> > frac;
+    frac.resize(fragment->N_fragments, vector<double>(3,0.));
+
+    //copying the fractional coordinates of the fragments and scaling them
+    for (i=0;i<fragment->N_fragments;i++){
+        frac[i][0]=fragment->mol_frac[i][0];
+        frac[i][1]=fragment->mol_frac[i][1]*factor;
+        frac[i][2]=fragment->mol_frac[i][2];
+    }
+
+    //temporary copy of the molecule-centered modified xyz coordinates
+    vector< vector<double> > xyz_temp;
+    xyz_temp.resize(fragment->N_fragments, vector<double>(3,0.));
+    frac_to_xyz(fragment->N_fragments,xyz_temp,frac,cell);
+
+    //converting these to xyz differences in Angstrom to apply to each fragment
+    for(i=0;i<fragment->N_fragments;i++){
+        xyz_temp[i][0]=xyz_temp[i][0]-fragment->mol_xyz[i][0];
+        xyz_temp[i][1]=xyz_temp[i][1]-fragment->mol_xyz[i][1];
+        xyz_temp[i][2]=xyz_temp[i][2]-fragment->mol_xyz[i][2];
+    }
+
+    //Applying these xyz differences to each atom in the structure
+    for(i=0;i<fragment->N_fragments;i++){
+        for(j=0;j<fragment->frag_indices[i].size();j++){
+            xyz[fragment->frag_indices[i][j]][0]+=xyz_temp[i][0];
+            xyz[fragment->frag_indices[i][j]][1]+=xyz_temp[i][1];
+            xyz[fragment->frag_indices[i][j]][2]+=xyz_temp[i][2];
+        }
+    }
+}
+
+void expand_structure_c(int N_atoms, double factor, vector< vector<double> > &xyz, fragments *fragment, vector< vector<double> > &cell){
+    //Expands the 'c' unit cell parameter by factor, keeping molecular coordinates fixed
+        int i,j;
+
+    vector< vector<double> > frac;
+    frac.resize(fragment->N_fragments, vector<double>(3,0.));
+
+    //copying the fractional coordinates of the fragments and scaling them
+    for (i=0;i<fragment->N_fragments;i++){
+        frac[i][0]=fragment->mol_frac[i][0];
+        frac[i][1]=fragment->mol_frac[i][1];
+        frac[i][2]=fragment->mol_frac[i][2]*factor;
+    }
+
+    //temporary copy of the molecule-centered modified xyz coordinates
+    vector< vector<double> > xyz_temp;
+    xyz_temp.resize(fragment->N_fragments, vector<double>(3,0.));
+    frac_to_xyz(fragment->N_fragments,xyz_temp,frac,cell);
+
+    //converting these to xyz differences in Angstrom to apply to each fragment
+    for(i=0;i<fragment->N_fragments;i++){
+        xyz_temp[i][0]=xyz_temp[i][0]-fragment->mol_xyz[i][0];
+        xyz_temp[i][1]=xyz_temp[i][1]-fragment->mol_xyz[i][1];
+        xyz_temp[i][2]=xyz_temp[i][2]-fragment->mol_xyz[i][2];
+    }
+
+    //Applying these xyz differences to each atom in the structure
+    for(i=0;i<fragment->N_fragments;i++){
+        for(j=0;j<fragment->frag_indices[i].size();j++){
+            xyz[fragment->frag_indices[i][j]][0]+=xyz_temp[i][0];
+            xyz[fragment->frag_indices[i][j]][1]+=xyz_temp[i][1];
+            xyz[fragment->frag_indices[i][j]][2]+=xyz_temp[i][2];
+        }
+    }
 }
