@@ -31,3 +31,45 @@
 	 to just above 9 quintillion (long long int size).
 	-The addition of an interatomic distance constraint overrides the interatomic distance collision constraint. This helps
 	 to optimize ringed structures which reuqire the use of distance constraints to close the ring.
+
+06/03/26
+-Bug Fixes
+	-Previous versions improperly calculated the probability ellipsoids, which has been remedied.
+-New Features
+	-The program now supports on-the-fly simulations of multispin REDOR data. This is activated with the 'bulk' keyword.
+    -For the on-the-fly REDOR calculation, fast 3-angle powder averaging is used. By default 99 orientations are used.
+     This can be increased with the line: 
+
+	 powder 'N_orient' (N_orient can take values of 49, 99, 143, 199, 299, 537, and 1153)
+
+	 -You can specify the abundance of the recoupled nuclei from a given REDOR dataset calculated on-the-fly with:
+
+	  abundance 'curve index' 'abundance in %'
+
+	-Added support for general and periodic solids. This is triggered again with the bulk keyword or with the definition
+     of a unit cell. The structure is still represented the same way but the mol2 file should be instead given as a seupercell
+     The unit cell is then defined in the INTERFACES input file either as a cartesian cell matrix, for example:
+
+     cell_cart
+     24.5621  0   0
+      0    18   0
+      0    0  24.56217 
+
+      or with the unit cell definitions, although there the program assumes that teh mol2 file is properly ordered with a along x
+      as per the usual definition of the cell matrix. This is defined as:
+
+	  cell_abc 'a' 'b' 'c' 'alpha' 'beta' 'gamma'
+
+      To go along with this eight additional structural modifications are now available:
+	  expand_sym 'frac_min' 'frac_mac' 'Nsteps' -> expand the unit cell parameters uniformly, while keeping intramolecular distances and angles unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  expand_a 'frac_min' 'frac_mac' 'Nsteps' -> expand the a parameters uniformly, while keeping intramolecular distances and angles unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  expand_b 'frac_min' 'frac_mac' 'Nsteps' -> expand the b parameters uniformly, while keeping intramolecular distances and angles unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  expand_c 'frac_min' 'frac_mac' 'Nsteps' -> expand the c parameters uniformly, while keeping intramolecular distances and angles unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  swell_sym 'frac_min' 'frac_mac' 'Nsteps' -> expand the unit cell parameters uniformly, while keeping fractional coordinates unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  swell_a 'frac_min' 'frac_mac' 'Nsteps' -> expand the a parameters uniformly, while keeping fractional coordinates unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  swell_b 'frac_min' 'frac_mac' 'Nsteps' -> expand the b parameters uniformly, while keeping fractional coordinates unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+	  swell_c 'frac_min' 'frac_mac' 'Nsteps' -> expand the c parameters uniformly, while keeping fractional coordinates unchanged from a factor of frac_min to frac_max times their initial value in Nstep steps.
+
+      (These features will be discussed in a forthcoming publication)
+
+
