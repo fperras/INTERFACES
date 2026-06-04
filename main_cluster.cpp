@@ -249,7 +249,7 @@ int main(int argc, char *argv[]){
             bulk=1;
             surface_collision_distance=-1.;
 
-            sscanf(buffer,"%s",keyword,unit_cell[0],unit_cell[1],unit_cell[2],unit_cell[3],unit_cell[4],unit_cell[5]);
+            sscanf(buffer,"%s %lf %lf %lf %lf %lf %lf",keyword,&unit_cell[0],&unit_cell[1],&unit_cell[2],&unit_cell[3],&unit_cell[4],&unit_cell[5]);
             sprintf(keyword,"void");
 
             calc_cell_matrix(cell,unit_cell);
@@ -257,7 +257,6 @@ int main(int argc, char *argv[]){
             error_file=fopen(error_filename,"a");
             fprintf(error_file, "\nNOTICE: cell defined using its dimensions. \nINTERFACES will assume that the standard cell format is used in the xyz coordinates.\n");
             fclose(error_file);
-            exit(1);
 
             if((cell[0][1]!=0.0)||(cell[0][2]!=0.0)||(cell[1][2]!=0.0)){
                 error_file=fopen(error_filename,"a");
