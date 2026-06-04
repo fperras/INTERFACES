@@ -76,5 +76,6 @@
 -New Features
 	-You can specify that a saturation pulse only saturates the central transition of a quadrupole with the following command:
 	  CT_sat 'curve index'
+	-Added the ability to use SEDOR data. Datasets are given analogously to intramolecular-REDOR with the change of the keyword to intramolecular-SEDOR
 
 
