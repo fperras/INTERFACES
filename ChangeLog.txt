@@ -72,4 +72,9 @@
 
       (These features will be discussed in a forthcoming publication)
 
+06/04/2026
+-New Features
+	-You can specify that a saturation pulse only saturates the central transition of a quadrupole with the following command:
+	  CT_sat 'curve index'
+
 
