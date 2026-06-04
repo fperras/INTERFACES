@@ -251,6 +251,9 @@ int main(int argc, char *argv[]){
 
             sscanf(buffer,"%s %lf %lf %lf %lf %lf %lf",keyword,&unit_cell[0],&unit_cell[1],&unit_cell[2],&unit_cell[3],&unit_cell[4],&unit_cell[5]);
             sprintf(keyword,"void");
+            unit_cell[3]=unit_cell[3]*Pi/180.;
+            unit_cell[4]=unit_cell[4]*Pi/180.;
+            unit_cell[5]=unit_cell[5]*Pi/180.;
 
             calc_cell_matrix(cell,unit_cell);
 
@@ -858,6 +861,20 @@ int main(int argc, char *argv[]){
             fprintf(log_file,"Curve %s will be calculated on-the-fly\n",REDOR[i].filename);
         }
     }
+
+    //Checking the input file to see if any of the curves involved a CT saturation
+    input=fopen(input_filename,"r");
+    while(fgets(buffer, sizeof(buffer), input) != NULL){
+        sscanf(buffer," %s",keyword);
+            if(strcmp(keyword, "CT_sat")==0){
+                int index;
+                sscanf(buffer,"%s %d",keyword,&index);
+                REDOR[index-1].NA/=(REDOR[index-1].spin+1);
+                REDOR[index-1].spin=1;
+                printf("Will assume CT saturation for %s\n",REDOR[index-1].filename);
+            }
+    }
+    fclose(input);
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
