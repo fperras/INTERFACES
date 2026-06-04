@@ -5,7 +5,7 @@
 struct REDOR_dataset{
     vector<int> detected;
     vector<int> recoupled;
-    int type;
+    int type;// 0 for surface-REDOR; 1 for intramolecular-REDOR; 2 for intramolecular-SEDOR (not yet implemented)
     int spin;
     char rec_element[3];
     char det_element[3];
@@ -449,6 +449,107 @@ double RDD_1A(const char *element1, const char *element2){
 double RDD(double RDD_1A, double distance){
     //This function returns the dipolar coupling constant between two nuclei.
     return RDD_1A*pow(distance,-3.0);
+}
+
+double SEDOR_analyt(double RDD, double time, double order_parameter){
+    //On-the-fly calculation of a SEDOR dephasing for a specific dipolar coupling and time
+    //Uses the exact semi-analytical representation from Mueller.
+    //subprogram
+    double DSS0=1.;
+    double Dt = Pi*time*RDD*order_parameter/2.;
+    DSS0 -= cos(Dt)*gsl_sf_bessel_J0(3*Dt);
+    for(int k=1;k<=5;k++){
+        DSS0 += 2*cos(Dt+k*Pi/2.)*1./(4*k*k-1)*gsl_sf_bessel_Jn(k,3.*Dt);
+    }
+    return DSS0;
+}
+
+double SEDOR_DSS0(double RDD, double time, double order_parameter, int spin){
+    //On-the-fly calculation of a REDOR dephasing for a specific dipolar coupling and time
+    //Uses the exact semi-analytical representation from Mueller.
+    double DSS0=0.;
+    switch(spin){
+        case 1 :
+            return SEDOR_analyt(RDD,time,order_parameter);
+        break;
+
+        case 2:
+            DSS0+= 4./9.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 2./9.* SEDOR_analyt(2*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 3:
+            DSS0+= 3./8.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 1./4.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 1./8.* SEDOR_analyt(3*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 4:
+            DSS0+= 8./25.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 6./25.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 4./25.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 2./25.* SEDOR_analyt(4*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 5:
+            DSS0+= 5./18.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 2./9.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 1./6.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 1./9.* SEDOR_analyt(4*RDD,time,order_parameter);
+            DSS0+= 1./18.* SEDOR_analyt(5*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 6:
+            DSS0+= 12./49.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 10./99.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 8./49.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 6./49.* SEDOR_analyt(4*RDD,time,order_parameter);
+            DSS0+= 4./49.* SEDOR_analyt(5*RDD,time,order_parameter);
+            DSS0+= 2./49.* SEDOR_analyt(6*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 7:
+            DSS0+= 14./64.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 12./64.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 10./64.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 8./64.* SEDOR_analyt(4*RDD,time,order_parameter);
+            DSS0+= 6./64.* SEDOR_analyt(5*RDD,time,order_parameter);
+            DSS0+= 4./64.* SEDOR_analyt(6*RDD,time,order_parameter);
+            DSS0+= 2./64.* SEDOR_analyt(7*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 8:
+            DSS0+= 16./81.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 14./81.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 12./81.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 10./81.* SEDOR_analyt(4*RDD,time,order_parameter);
+            DSS0+= 8./81.* SEDOR_analyt(5*RDD,time,order_parameter);
+            DSS0+= 6./81.* SEDOR_analyt(6*RDD,time,order_parameter);
+            DSS0+= 4./81.* SEDOR_analyt(7*RDD,time,order_parameter);
+            DSS0+= 2./81.* SEDOR_analyt(8*RDD,time,order_parameter);
+            return DSS0;
+        break;
+
+        case 9:
+            DSS0+= 9./50.* SEDOR_analyt(1*RDD,time,order_parameter);
+            DSS0+= 8./50.* SEDOR_analyt(2*RDD,time,order_parameter);
+            DSS0+= 7./50.* SEDOR_analyt(3*RDD,time,order_parameter);
+            DSS0+= 6./50.* SEDOR_analyt(4*RDD,time,order_parameter);
+            DSS0+= 5./50.* SEDOR_analyt(5*RDD,time,order_parameter);
+            DSS0+= 4./50.* SEDOR_analyt(6*RDD,time,order_parameter);
+            DSS0+= 3./50.* SEDOR_analyt(7*RDD,time,order_parameter);
+            DSS0+= 2./50.* SEDOR_analyt(8*RDD,time,order_parameter);
+            DSS0+= 1./50.* SEDOR_analyt(9*RDD,time,order_parameter);
+            return DSS0;
+        break;
+    }
+    return 0.0;
 }
 
 double REDOR_DSS0(double RDD, double time, double order_parameter, int spin){

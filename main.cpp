@@ -361,6 +361,10 @@ int main(){
             N_curves++;
             sprintf(keyword,"void");
         }
+        else if(strcmp(keyword, "intramolecular-SEDOR")==0){
+            N_curves++;
+            sprintf(keyword,"void");
+        }
         else if(strcmp(keyword, "revolve")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
@@ -490,9 +494,13 @@ int main(){
                 sprintf(keyword,"void");
             }//surface_curve
 
-            else if(strcmp(keyword, "intramolecular-REDOR")==0){
+            else if((strcmp(keyword, "intramolecular-REDOR")==0)||(strcmp(keyword, "intramolecular-SEDOR")==0)){
                 sscanf(buffer,"%s %s %lf",keyword,&REDOR[counter].filename, &REDOR[counter].scaling_factor);
                 REDOR[counter].type=1;
+
+                if(strcmp(keyword, "intramolecular-SEDOR")==0)
+                    REDOR[counter].type=2;
+
 
                 if((REDOR[counter].scaling_factor>1.)||(REDOR[counter].scaling_factor<0.)){
                     error_file=fopen(error_filename,"a");

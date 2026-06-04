@@ -23,6 +23,58 @@ double DSS0_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &xy
 
 }
 
+double SEDOR_coswDt(double sa, double ca, double sb, double cb, double sg, double cg, double time, double RDD, double sa2, double ca2, double sb2, double cb2, int spin) {
+    //similar to the next function but for SEDOR data instead of REDOR
+    //similarly assumes saturation of all transitions unless it is a spin-1/2 for the CT_sat keyword is used in the input
+    double x = sb2*ca2;
+    double y = sb2*sa2;
+    double z = cb2;
+
+    double cb3 = sb*ca*x+sb*sa*y+cb*z;
+
+    double w = Pi*RDD*(3.*cb3*cb3-1.)*time;
+
+    switch(spin){
+        case 1 :
+        return -cos(w);
+        break;
+
+        case 2 :
+        return -1./3. -4./9.*cos(w)-2./9.*cos(2*w);
+        break;
+
+        case 3 :
+        return -1./4. -3./8.*cos(w)-1./4.*cos(2*w)-1./8.*cos(3*w);
+        break;
+
+        case 4 :
+        return -1./5. -8./25.*cos(w)-6./25.*cos(2*w)-4./25.*cos(3*w)-2./25.*cos(4*w);
+        break;
+
+        case 5 :
+        return -1./6. - 5./18.*cos(w) - 2./9.*cos(2*w) - 1./6.*cos(3*w) - 1./9.*cos(4*w) - 1./18.*cos(5*w);
+        break;
+
+        case 6 :
+        return -1./7. - 12./49.*cos(w) - 10./49.*cos(2*w) - 8./49.*cos(3*w) - 6./49.*cos(4*w) - 4./49.*cos(5*w) - 2./49.*cos(6*w);
+        break;
+
+        case 7 :
+        return -1./8. - 14./64.*cos(w) - 12./64.*cos(2*w) - 10./64.*cos(3*w) - 8./64.*cos(4*w) - 6./64.*cos(5*w) - 4./64.*cos(6*w) - 2./64.*cos(7*w);
+        break;
+
+        case 8 :
+        return -1./9. - 16./81.*cos(w) - 14./81.*cos(2*w) - 12./81.*cos(3*w) - 10./81.*cos(4*w) - 8./81.*cos(5*w) - 6./81.*cos(6*w) - 4./81.*cos(7*w) - 2./81.*cos(8*w);
+        break;
+
+        case 9 :
+        return -1./10. - 9./50.*cos(w) - 8./50.*cos(2*w) - 7./50.*cos(3*w) - 6./50.*cos(4*w) - 5./50.*cos(5*w) - 4./50.*cos(6*w) - 3./50.*cos(7*w) - 2./50.*cos(8*w) - 1./50.*cos(9*w);
+        break;
+	   }
+
+    return 0.0;
+}
+
 double coswDt(double sa, double ca, double sb, double cb, double sg, double cg, double time, double RDD, double sa2, double ca2, double sb2, double cb2, int spin) {
     //This is a function to calculate the cosine of the dipolar frequency
     //equations taken from JMR 127, 147-154 (1997) and PCCP 12, 9395-9405 (2010)
@@ -84,10 +136,19 @@ double REDOR_full_mean(double time, REDOR_dataset &REDOR, vector< vector<double>
 	double distance;
 	int i, ndet=REDOR.detected.size();
 
+	if(REDOR.type==1){//REDOR
     for(i=0; i<ndet; i++){
         distance = get_effective_distance(REDOR,xyz,i);
         DSS0 = DSS0+  REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
     }
+	}
+
+	else if(REDOR.type==2){//SEDOR
+    for(i=0; i<ndet; i++){
+        distance = get_effective_distance(REDOR,xyz,i);
+        DSS0 = DSS0+  SEDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+    }
+	}
 
     return DSS0*REDOR.scaling_factor*REDOR.NA;
 }
@@ -100,11 +161,20 @@ double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &x
 	int i,j,k, ndet=REDOR.detected.size(), nrec=REDOR.recoupled.size();
 
 	if(nrec==1){//uses the faster Bessel approach
-        for(i=0; i<ndet; i++){
-            distance = get_effective_distance(REDOR,xyz,i);
-            DSS0 = DSS0+  REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+        if(REDOR.type==1){//REDOR
+            for(i=0; i<ndet; i++){
+                distance = get_effective_distance(REDOR,xyz,i);
+                DSS0 = DSS0+  REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+            }
+            return DSS0*REDOR.scaling_factor*REDOR.NA;
         }
-        return DSS0*REDOR.scaling_factor*REDOR.NA;
+        else if(REDOR.type==2){//SEDOR
+            for(i=0; i<ndet; i++){
+                distance = get_effective_distance(REDOR,xyz,i);
+                DSS0 = DSS0+  SEDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+            }
+            return DSS0*REDOR.scaling_factor*REDOR.NA;
+        }
 	}
 
 	//multi-spin numerical integration
@@ -143,13 +213,23 @@ double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &x
             sincos(betaD,&sbD[j],&cbD[j]);
         }
         //dephasing calculation
-        for(k=0; k<N_orient; k++){
-            DS=1.;
-            for(j=0;j<nrec;j++){
-                DS=DS*(1.-REDOR.NA*(1.-    (-coswDt(sa[k], ca[k], sb[k],cb[k], sg[k], cg[k], time, D[j], saD[j], caD[j], sbD[j], cbD[j], REDOR.spin))));
-
+        if(REDOR.type==1){//REDOR
+            for(k=0; k<N_orient; k++){
+                DS=1.;
+                for(j=0;j<nrec;j++){
+                    DS=DS*(1.-REDOR.NA*(1.-    (-coswDt(sa[k], ca[k], sb[k],cb[k], sg[k], cg[k], time, D[j], saD[j], caD[j], sbD[j], cbD[j], REDOR.spin))));
+                }
+                DSS0 += (1.-DS)*intensity[k]/ndet;
             }
-            DSS0 += (1.-DS)*intensity[k]/ndet;
+        }
+        if(REDOR.type==2){//SEDOR
+            for(k=0; k<N_orient; k++){
+                DS=1.;
+                for(j=0;j<nrec;j++){
+                    DS=DS*(1.-REDOR.NA*(1.-    (-SEDOR_coswDt(sa[k], ca[k], sb[k],cb[k], sg[k], cg[k], time, D[j], saD[j], caD[j], sbD[j], cbD[j], REDOR.spin))));
+                }
+                DSS0 += (1.-DS)*intensity[k]/ndet;
+            }
         }
 	}
 

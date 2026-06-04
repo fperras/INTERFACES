@@ -370,6 +370,10 @@ int main(int argc, char *argv[]){
             N_curves++;
             sprintf(keyword,"void");
         }
+        else if(strcmp(keyword, "intramolecular-SEDOR")==0){
+            N_curves++;
+            sprintf(keyword,"void");
+        }
         else if(strcmp(keyword, "revolve")==0){
             N_rotatable_bonds++;
             sprintf(keyword,"void");
@@ -499,9 +503,13 @@ int main(int argc, char *argv[]){
                 sprintf(keyword,"void");
             }//surface_curve
 
-            else if(strcmp(keyword, "intramolecular-REDOR")==0){
+            else if((strcmp(keyword, "intramolecular-REDOR")==0)||(strcmp(keyword, "intramolecular-SEDOR")==0)){
                 sscanf(buffer,"%s %s %lf",keyword,&REDOR[counter].filename, &REDOR[counter].scaling_factor);
                 REDOR[counter].type=1;
+
+                if(strcmp(keyword, "intramolecular-SEDOR")==0)
+                    REDOR[counter].type=2;
+
 
                 if((REDOR[counter].scaling_factor>1.)||(REDOR[counter].scaling_factor<0.)){
                     error_file=fopen(error_filename,"a");
@@ -790,6 +798,7 @@ int main(int argc, char *argv[]){
             }
         }//end while
     fclose(input);
+
 
     //Stopping the calculation if no unit cell is defined and the cell-specific manipulations are called
     if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.)){
@@ -1517,8 +1526,8 @@ int main(int argc, char *argv[]){
                 else{
                     other_structures++;
                     sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", filename_base, other_structures);
-                    printf("(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
-                    fprintf(log_file,"(%d) Other acceptable structure found: rmsd with best = %lf\n", other_structures, deviation);
+                    printf("(%d) Other acceptable structure found: rmsd = %lf\n", other_structures, deviation);
+                    fprintf(log_file,"(%d) Other acceptable structure found: rmsd = %lf\n", other_structures, deviation);
                     write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
                 }
             }
