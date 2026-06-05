@@ -36,7 +36,9 @@ was renamed __sincos(). Find those two instances in the file and add the two und
 **Installing dependencies:**
 
 brew install llvm
+
 brew install gsl
+
 brew install libomp
 
 **Compiling INTERFACES:**
