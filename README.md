@@ -29,17 +29,17 @@ Before this, however, the 'on-the-fly-REDOR.hpp' source file needs to be modifie
 quirk. There are two instances in this file where the sincos() function is used. In Apple, this function
 was renamed __sincos(). Find those two instances in the file and add the two underscores before sincos.
 
-Installing homebrew:
+**Installing homebrew:**
 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-Installing dependencies:
+**Installing dependencies:**
 
 brew install llvm
 brew install gsl
 brew install libomp
 
-Compiling INTERFACES:
+**Compiling INTERFACES:**
 
 /opt/homebrew/opt/llvm/bin/clang++ -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -I/opt/homebrew/opt/gsl/include -L/opt/homebrew/opt/gsl/lib main_cluster.cpp -o INTERFACES -lgsl -lgslcblas -lomp -lm -O3 -march=native -w
 ________________________________________________________________________________________________________________
