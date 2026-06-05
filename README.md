@@ -51,7 +51,7 @@ the "library_maker.c" program, or by contacting Frederic Perras. A few parameter
 to be edited for each case. The program can be compiled with the following command. More details are given in the 
 comments in the source code.
 mpicc library_maker.c -o library_maker -lm -O3 -march=native
-
+________________________________________________________________________________________________________________
 Copyright 2022.  Iowa State University.  This material was produced under U.S. Government contract DE-AC02-07CH11358 
 for the Ames National Laboratory, which is operated by Iowa State University for the U.S. Department of Energy.  The 
 U.S. Government has rights to use, reproduce, and distribute this software.  NEITHER THE GOVERNMENT, AMES NATIONAL 
