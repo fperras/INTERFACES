@@ -15,9 +15,11 @@ ________________________________________________________________________________
 # Linux Installation
 Binaries are also provided for both the main.cpp and main_cluster.cpp versions. 
 To submit a job to a cluster, use the following command in your job submission script:
+
 ./INTERFACES_cluster input_file > log.txt
 
 You can also compile it fresh on your machine with the following command provided gsl is installed:
+
 g++ main_cluster.cpp -o INTERFACES_cluster -fopenmp -lgsl -lgslcblas -lm -O3 -static -w
 ________________________________________________________________________________________________________________
 # Mac Installation
