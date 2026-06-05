@@ -23,7 +23,11 @@ ________________________________________________________________________________
 # Mac Installation
 No binaries are provided for Macs at this time. To compile your own copy, homebrew needs to be installed
 because INTERFACES makes use of OpenMP for parallelization. The following sequence of terminal commands
-can be used to install INTERFACES and its dependencies:
+can be used to install INTERFACES and its dependencies. 
+
+Before this, however, the 'on-the-fly-REDOR.hpp' source file needs to be modified to deal with an Apple
+quirk. There are two instances in this file where the sincos() function is used. In Apple, this function
+was renamed __sincos(). Find those two instances in the file and add the two underscores before sincos.
 
 Installing homebrew:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -34,12 +38,7 @@ brew install gsl
 brew install libomp
 
 Compiling INTERFACES:
-/opt/homebrew/opt/llvm/bin/clang++ -Xpreprocessor -fopenmp \
--I/opt/homebrew/opt/libomp/include \
--L/opt/homebrew/opt/libomp/lib \
--I/opt/homebrew/opt/gsl/include \
--L/opt/homebrew/opt/gsl/lib \
-main_cluster.cpp -o INTERFACES -lgsl -lgslcblas -lomp -lm -O3 -march=native -w
+/opt/homebrew/opt/llvm/bin/clang++ -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include -L/opt/homebrew/opt/libomp/lib -I/opt/homebrew/opt/gsl/include -L/opt/homebrew/opt/gsl/lib main_cluster.cpp -o INTERFACES -lgsl -lgslcblas -lomp -lm -O3 -march=native -w
 ________________________________________________________________________________________________________________
 
 Note: All needed REDOR library files must be included in the running directory of the program, together with 
