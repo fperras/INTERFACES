@@ -4,17 +4,43 @@ Program to determine the 3D structure of a surface species using REDOR NMR data
 There are two options for using the program:
 
 1) If you are planning on submitting jobs directly on that machine using cmd or a terminal
-then use the main.cpp file. Compile it using OpenMP and O3 optimizations. For instance:
-g++ main.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
-
+then use the main.cpp file. 
 2) If you are planning on submitting jobs to a cluster the main_cluster.cpp file takes instead
-an argument for the input file. Compile it using OpenMP and O3 optimizations. For instance:
-g++ main_cluster.cpp -o INTERFACES -fopenmp -lm -O3 -march=native
-
+an argument for the input file.
+________________________________________________________________________________________________________________
+# Windows Installation
+I recommend just using the provided excecutable found in the binaries directory. This corresponds 
+to an x86 executable. For an ARM version it may be necessary to recompile the program.
+________________________________________________________________________________________________________________
+# Linux Installation
+Binaries are also provided for both the main.cpp and main_cluster.cpp versions. 
 To submit a job to a cluster, use the following command in your job submission script:
-./INTERFACES input_file > log.txt
+./INTERFACES_cluster input_file > log.txt
 
-Precompiled binaries are available in the binaries directory for windows, linux, and a linux cluster (all x86)
+You can also compile it fresh on your machine with the following command provided gsl is installed:
+g++ main_cluster.cpp -o INTERFACES_cluster -fopenmp -lgsl -lgslcblas -lm -O3 -static -w
+________________________________________________________________________________________________________________
+# Mac Installation
+No binaries are provided for Macs at this time. To compile your own copy, homebrew needs to be installed
+because INTERFACES makes use of OpenMP for parallelization. The following sequence of terminal commands
+can be used to install INTERFACES and its dependencies:
+
+Installing homebrew:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Installing dependencies:
+brew install llvm
+brew install gsl
+brew install libomp
+
+Compiling INTERFACES:
+/opt/homebrew/opt/llvm/bin/clang++ -Xpreprocessor -fopenmp \
+-I/opt/homebrew/opt/libomp/include \
+-L/opt/homebrew/opt/libomp/lib \
+-I/opt/homebrew/opt/gsl/include \
+-L/opt/homebrew/opt/gsl/lib \
+main_cluster.cpp -o INTERFACES -lgsl -lgslcblas -lomp -lm -O3 -march=native -w
+________________________________________________________________________________________________________________
 
 Note: All needed REDOR library files must be included in the running directory of the program, together with 
 the input file, any REDOR data files, and the starting structure, given as a mol2 file. Please reference the 
