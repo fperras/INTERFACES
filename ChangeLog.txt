@@ -78,4 +78,6 @@
 	  CT_sat 'curve index'
 	-Added the ability to use SEDOR data. Datasets are given analogously to intramolecular-REDOR with the change of the keyword to intramolecular-SEDOR
 
-
+06/10/2026
+-Bug Fixes
+	-There was an issue with the calculation of the fractional coordinates which was fixed.
