@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
     //Atom variables
     vector< vector<double> > xyz;
     xyz.resize(N_atoms, vector<double>(3,0.));
-    char element[N_atoms][3], atom_type[N_atoms][8];
+    char element[N_atoms][3], atom_type[N_atoms][8],trash[6];
     int atom_id[N_atoms];
     //bond variables
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
