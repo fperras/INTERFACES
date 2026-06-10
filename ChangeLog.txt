@@ -81,3 +81,4 @@
 06/10/2026
 -Bug Fixes
 	-There was an issue with the calculation of the fractional coordinates which was fixed.
+	-Fixed a bug wherein the program would segfault if the atoms were labeled like 'Si1' in the mol2 file.
