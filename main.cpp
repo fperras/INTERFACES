@@ -1161,7 +1161,6 @@ int main(){
             //in the Chi^2 table and take a sum to calculate the total chi 2
             double chi2=0.;
 
-            printf("here");
                 for(kk=0; kk<N_curves; kk++){
                     d_indices[kk] = get_distance_index(REDOR[kk],xyz_priv);
                     std_indices[kk] = get_STDEV_index(REDOR[kk],xyz_priv);
