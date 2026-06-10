@@ -829,7 +829,7 @@ int main(int argc, char *argv[]){
     //If it is a surface structure, it is centered along x and y
     //If it is a bulk solid, is it centered along all three directions
     //If a cell was specified, it is not recentered as it is assumed to be already centered.
-    if((unit_cell[0]!=1.)||(unit_cell[1]!=1.)||(unit_cell[2]!=1.))
+    if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.))
         center_structure(N_atoms,xyz,bulk);
     k = 0;
 
