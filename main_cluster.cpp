@@ -173,7 +173,8 @@ int main(int argc, char *argv[]){
         if(k==line_Atoms+1){
             for(i=0; i<N_atoms; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], trash, &xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                sscanf(trash,"%2[A-Za-z]%*[0-9]",element[i]);
                 //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
                 element[i][0]=toupper(element[i][0]);
                 element[i][1]=tolower(element[i][1]);

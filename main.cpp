@@ -146,7 +146,7 @@ int main(){
     //Atom variables
     vector< vector<double> > xyz;
     xyz.resize(N_atoms, vector<double>(3,0.));
-    char element[N_atoms][3], atom_type[N_atoms][8];
+    char element[N_atoms][3], atom_type[N_atoms][8], trash[8];
     int atom_id[N_atoms];
     //bond variables
     int bond_id[N_bonds], ori_atom_id[N_bonds], tar_atom_id[N_bonds];
@@ -164,7 +164,8 @@ int main(){
         if(k==line_Atoms+1){
             for(i=0; i<N_atoms; i++){
                 fgets(buffer, sizeof(buffer), mol2_file);
-                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], element[i],&xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                sscanf(buffer,"%d %s %lf %lf %lf %s", &atom_id[i], trash, &xyz[i][0],&xyz[i][1],&xyz[i][2], atom_type[i]);
+                sscanf(trash,"%2[A-Za-z]%*[0-9]",element[i]);
                 //MOL2 files tend to mix the cases so this will normalize them to something like Si, not SI.
                 element[i][0]=toupper(element[i][0]);
                 element[i][1]=tolower(element[i][1]);
@@ -819,7 +820,7 @@ int main(){
     //If it is a surface structure, it is centered along x and y
     //If it is a bulk solid, is it centered along all three directions
     //If a cell was specified, it is not recentered as it is assumed to be already centered.
-    if((unit_cell[0]!=1.)||(unit_cell[1]!=1.)||(unit_cell[2]!=1.))
+    if((unit_cell[0]==1.)&&(unit_cell[1]==1.)&&(unit_cell[2]==1.))
         center_structure(N_atoms,xyz,bulk);
     k = 0;
 
@@ -1096,6 +1097,7 @@ int main(){
             }
             else if(bond[jj].type==2){//bond angle
                 angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                //printf("%lf\n",angle);
                 generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
                 //rotating all of atoms involved around the bond
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
@@ -1159,6 +1161,7 @@ int main(){
             //in the Chi^2 table and take a sum to calculate the total chi 2
             double chi2=0.;
 
+            printf("here");
                 for(kk=0; kk<N_curves; kk++){
                     d_indices[kk] = get_distance_index(REDOR[kk],xyz_priv);
                     std_indices[kk] = get_STDEV_index(REDOR[kk],xyz_priv);

@@ -11,9 +11,9 @@ struct fragments{
 void xyz_to_frac(int N_atoms, vector< vector<double> > &xyz, vector< vector<double> > &frac, vector< vector<double> > &cell){
     int i;
     for(i=0;i<N_atoms;i++){
-        frac[i][0] = xyz[i][0]/cell[0][0];
-        frac[i][1] = (xyz[i][1]-cell[1][0]*(xyz[i][0]/cell[0][0])) / cell[1][1];
-        frac[i][2] = (xyz[i][2] - cell[2][0]*frac[i][0] - cell[2][1]*frac[i][1]) / cell[2][2];
+        frac[i][1] = xyz[i][1] / cell[1][1];
+        frac[i][0] = (xyz[i][0] - cell[1][0]*frac[i][1]) / cell[0][0];
+        frac[i][2] = xyz[i][2] / cell[2][2];
     }
 }
 void frac_to_xyz(int N_atoms, vector< vector<double> > &xyz, vector< vector<double> > &frac, vector< vector<double> > &cell){
