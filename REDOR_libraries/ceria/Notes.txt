@@ -1,2 +1,0 @@
-The support: Ce17O2 assumes a 100% 17O enrichment
-Those named XYp_Ce17O2 assume a 17O enrichment level of XY%
