@@ -86,3 +86,4 @@
 06/16/26
 -Improvements
 	-Reduced the datapoint spacing for surface-redor libraries and in the output simulated data from 200 microseconds to 100 microseconds. Examples and REDOR library files were updated.
+    -The code now estimates the percent completion as it progresses.
