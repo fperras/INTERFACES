@@ -5,8 +5,8 @@ double DSS0_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &xy
     //This function returns the dephasing form a group of detected spins as an average
     //for surface-to-atom REDOR
 
-    int time_index = round((time/0.0002)*REDOR.order_parameter - 1.);
-	time_index = (time_index>249)*249 + (time_index<=249)*time_index;
+    int time_index = round((time/0.0001)*REDOR.order_parameter - 1.);
+	time_index = (time_index>499)*499 + (time_index<=499)*time_index;
 	time_index = (time_index>-1)*time_index;
 	double DSS0=0.;
 	double distance;
@@ -229,6 +229,7 @@ double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &x
                     DS=DS*(1.-REDOR.NA*(1.-    (-SEDOR_coswDt(sa[k], ca[k], sb[k],cb[k], sg[k], cg[k], time, D[j], saD[j], caD[j], sbD[j], cbD[j], REDOR.spin))));
                 }
                 DSS0 += (1.-DS)*intensity[k]/ndet;
+
             }
         }
 	}
@@ -291,8 +292,8 @@ void write_fits_meticulous(char *base_filename, const char *support_name, vector
     fprintf(out,"\n");
 
     //writing out the dephasing values to the CSV file
-    for(i=1;i<=250;i++){
-        double time=i*0.0002;
+    for(i=1;i<=500;i++){
+        double time=i*0.0001;
         fprintf(out,"%lf,,",time);
 
         for(j=0;j<REDOR.size();j++){
@@ -408,8 +409,8 @@ void write_fits_multi(int found_structures, char *base_filename, vector< REDOR_d
     fprintf(out,"\n");
 
     //writing out the dephasing values to the CSV file
-    for(i=1;i<=250;i++){
-        double time=i*0.0002;
+    for(i=1;i<=500;i++){
+        double time=i*0.0001;
         fprintf(out,"%lf,,",time);
 
         for(j=0;j<REDOR.size();j++){

@@ -106,9 +106,9 @@ int get_STDEV_index(REDOR_dataset &REDOR, vector< vector<double> > &xyz){
 
 int load_simulations(const char *support_name, REDOR_dataset &REDOR){
     //This function loads the simulated REDOR results for a given support-nuclear combination
-	//Data are stored as DSS0_lib[250][200] with the first index corresponding to time and the second distance
+	//Data are stored as DSS0_lib[500][200] with the first index corresponding to time and the second distance
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
-    //and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
+    //and the time time running from 0.0001 s to 0.05 s in 0.0001 s increments.
 	char error_filename[128];
 	sprintf(error_filename,"Errors.txt");
     FILE *error_file;
@@ -128,7 +128,7 @@ int load_simulations(const char *support_name, REDOR_dataset &REDOR){
         exit(1);
 	}
 
-	for(i=0; i<250;i++){
+	for(i=0; i<550;i++){
 		fscanf(fp,"%lf",&time);
 		for(j=0;j<200;j++){
 			fscanf(fp,"%lf",&REDOR.DSS0_lib[i][j]);
@@ -141,13 +141,13 @@ int load_simulations(const char *support_name, REDOR_dataset &REDOR){
 double DSS0_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, REDOR_dataset &REDOR){
 	//This function is used to calculate the REDOR dephasing given a gaussian distribution of distances with d_mean and d_std
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
-	//and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
+	//and the time time running from 0.0001 s to 0.05 s in 0.0001 s increments.
 
 	int i, time_index, d_index;
 	double DSS0 = 0., distance;
 
-	time_index = round((time/0.0002)*REDOR.order_parameter - 1.);
-	time_index = (time_index>249)*249 + (time_index<=249)*time_index;
+	time_index = round((time/0.0001)*REDOR.order_parameter - 1.);
+	time_index = (time_index>499)*499 + (time_index<=499)*time_index;
 	time_index = (time_index>-1)*time_index;
 
 	if(REDOR.detected.size()==2){
@@ -652,7 +652,7 @@ double REDOR_DSS0(double RDD, double time, double order_parameter, int spin){
 double REDOR_pred(double time, double d_mean, double d_std, vector< vector<double> > &gaussians, REDOR_dataset &REDOR){
 	//This function is used to calculate the REDOR dephasing given a gaussian distribution of distances with d_mean and d_std
 	//DSS0_lib is organized as DSS0_lib[time][distance] with the distance indices running from 0.1 to 20 A (indices of 0 to 199)
-	//and the time time running from 0.0002 s to 0.05 s in 0.0002 s increments.
+	//and the time time running from 0.0001 s to 0.05 s in 0.0001 s increments.
 	int i;
 	double DSS0 = 0., distance;
 
@@ -764,8 +764,8 @@ void write_fits(char *base_filename, const char *support_name, vector< REDOR_dat
     fprintf(out,"\n");
 
     //writing out the dephasing values to the CSV file
-    for(i=1;i<=250;i++){
-        double time=i*0.0002;
+    for(i=1;i<=500;i++){
+        double time=i*0.0001;
 
         for(j=0;j<REDOR.size();j++){
             fprintf(out,"%lf,",time/REDOR[j].order_parameter);

@@ -841,7 +841,7 @@ int main(){
         REDOR[i].DSS0.resize(Npoints, 0.);
         REDOR[i].tmix.resize(Npoints, 0.);
         load_exp_curve(REDOR[i]);//populates DSS0 and tmix, the experimental data
-        REDOR[i].DSS0_lib.resize(250, vector<double>(200,0.));
+        REDOR[i].DSS0_lib.resize(500, vector<double>(200,0.));
         for(j=0;j<N_atoms;j++){
             sprintf(REDOR[i].det_element,"%s",element[REDOR[i].detected[0]]);
             sprintf(REDOR[i].rec_element,"%s",element[REDOR[i].recoupled[0]]);

@@ -29,13 +29,24 @@ int main(){
     float RDD_1A = 4097.223; //dipolar coupling at a distance of 1A. (reduce further by a factor of 1.8 if it is a S-RE(SP)DOR experiment)
 
 //variable declarations. Do not change time_steps, max_time, or init_time if you wish to maintain compatibility with INTERFACES
-    int i,j,k,l,t, betasteps = 71, alphasteps = 51, time_steps = 250;
+    int i,j,k,l,t, N_orient, time_steps = 500;
     float start_distance = (1 + world_rank)*0.1;
     float distance_increment = 0.1*world_size;
-    float max_time = 0.050, init_time= 0.0002, distance, DSnorm[time_steps+1], DS, RDD,  betaD, alpha, beta, gamma;
+    float max_time = 0.050, init_time= 0.0001, distance, DSnorm[time_steps+1], DS, RDD,  betaD, alpha, beta, gamma;
     float x[N_atoms], y[N_atoms], z[N_atoms], xy[N_atoms], alphaD[N_atoms];
-    FILE *fp, *struct_fp;
+    FILE *fp, *struct_fp, *cry;
     char filename[30], buffer[256];
+	
+    //Reading the crystal file. must be a 3-angle file.
+    cry=fopen("3ZCW1153.cry","r");
+    fgets(buffer,256,cry);
+    sscanf(buffer,"%d",&N_orient);
+    double alphas[N_orient], gammas[N_orient], betas[N_orient], intensity[N_orient];
+    for(i=0;i<N_orient;i++){
+        fgets(buffer,256,cry);
+        sscanf(buffer,"%lf %lf %lf %lf",&alphas[i], &betas[i], &gammas[i], &intensity[i]);
+    }
+    fclose(cry);
 
 //Here the program reads the structure file, which is just a list of x y z coordinates in a 3-column text file
 //It then converts these into a z distance, xy distance, and alpha angle.
@@ -65,22 +76,17 @@ int main(){
 
 //calculation of RESPDOR curve
         for(t=0; t<time_steps; t++){  //start of time loop
-            for(i=0; i<betasteps; i++){  //start of beta loop (cosinusoidal to avoid powder average)
-               beta = acos(1.-i/(0.5*betasteps));
-               for(alpha=0.; alpha<2.*pi; alpha = alpha+ 2.*pi/alphasteps){  //start of alpha loop
-                    for(gamma=0.; gamma<2.*pi; gamma = gamma+ 2.*pi/alphasteps){  //start of gamma loop
-                    DS=1.;
-                    for(j=0;j<N_atoms;j++){
-                        RDD=RDD_1A/pow(xy[j]*xy[j]+pow(distance+z[j],2.),1.5);
-                        betaD=atan(xy[j]/(distance+z[j]));
-                        DS=DS*(1.-NA*(1.-    (-coswDt(alpha, beta, gamma, (max_time-init_time)*t/(time_steps-1)+init_time, RDD, alphaD[j], betaD, spin))));
-                    }//end of pairs loop
-
-                   //The dephasings are then multiplied for that particular orientation
-                   DSnorm[t]=DSnorm[t] + (1. - DS)/(alphasteps*betasteps*alphasteps);
-} //end of gamma loop
-} //end of alpha loop
-} //end of beta loop
+         //   printf("%d/%d\n",t+1,time_steps);
+            for(i=0; i<N_orient; i++){  //start of beta loop (cosinusoidal to avoid powder average)
+               DS=1.;
+               for(j=0;j<N_atoms;j++){
+                   RDD=RDD_1A/pow(xy[j]*xy[j]+pow(z[j]+distance,2.),1.5);
+                   betaD=atan(xy[j]/(z[j]));
+                   DS=DS*(1.-NA*(1.-    (-coswDt(alphas[i]*pi/180., betas[i]*pi/180., gammas[i]*pi/180., (max_time-init_time)*t/(time_steps-1)+init_time, RDD, alphaD[j], betaD, spin))));
+                }//end of pairs loop
+                //The dephasings are then multiplied for that particular orientation
+                DSnorm[t]=DSnorm[t] + (1. - DS)*intensity[i];
+} //end of orientation loop
 } //end of time loop
 
 //creating an output file
@@ -149,6 +155,60 @@ float coswDt(float alpha, float beta, float gamma, float time, float RDD, float 
     return 0.0;
 }
 
+double coswDt_trig(double sa, double ca, double sb, double cb, double sg, double cg, double time, double RDD, double sa2, double ca2, double sb2, double cb2, int spin) {
+    //This is a function to calculate the cosine of the dipolar frequency
+    //equations taken from JMR 127, 147-154 (1997) and PCCP 12, 9395-9405 (2010)
+
+       double x = sb2*ca2;
+       double y = sb2*sa2;
+       double z = cb2;
+
+       double niz = sb*ca*x + sb*sa*y + cb*z;
+       double niy = (-cg*sa - cb*ca*sg)*x + (cg*ca - cb*sa*sg)*y + sg*sb*z;
+       double s2bca = 2*niz*niy;
+
+       double w = 2.828427125*time*(RDD*s2bca);
+
+       switch(spin){
+			case 1 :
+			return -cos(w);
+			break;
+
+			case 2 :
+			return -1./3. -4./9.*cos(w)-2./9.*cos(2*w);
+			break;
+
+			case 3 :
+			return -1./4. -3./8.*cos(w)-1./4.*cos(2*w)-1./8.*cos(3*w);
+			break;
+
+			case 4 :
+			return -1./5. -8./25.*cos(w)-6./25.*cos(2*w)-4./25.*cos(3*w)-2./25.*cos(4*w);
+			break;
+
+			case 5 :
+			return -1./6. - 5./18.*cos(w) - 2./9.*cos(2*w) - 1./6.*cos(3*w) - 1./9.*cos(4*w) - 1./18.*cos(5*w);
+			break;
+
+			case 6 :
+			return -1./7. - 12./49.*cos(w) - 10./49.*cos(2*w) - 8./49.*cos(3*w) - 6./49.*cos(4*w) - 4./49.*cos(5*w) - 2./49.*cos(6*w);
+			break;
+
+			case 7 :
+			return -1./8. - 14./64.*cos(w) - 12./64.*cos(2*w) - 10./64.*cos(3*w) - 8./64.*cos(4*w) - 6./64.*cos(5*w) - 4./64.*cos(6*w) - 2./64.*cos(7*w);
+			break;
+
+			case 8 :
+			return -1./9. - 16./81.*cos(w) - 14./81.*cos(2*w) - 12./81.*cos(3*w) - 10./81.*cos(4*w) - 8./81.*cos(5*w) - 6./81.*cos(6*w) - 4./81.*cos(7*w) - 2./81.*cos(8*w);
+			break;
+
+			case 9 :
+			return -1./10. - 9./50.*cos(w) - 8./50.*cos(2*w) - 7./50.*cos(3*w) - 6./50.*cos(4*w) - 5./50.*cos(5*w) - 4./50.*cos(6*w) - 3./50.*cos(7*w) - 2./50.*cos(8*w) - 1./50.*cos(9*w);
+			break;
+	   }
+    return 0.0;
+}
+
 void compile_curves(){
     float time, distance, dephasing;
     int i, j;
@@ -164,8 +224,8 @@ void compile_curves(){
         i++;
     }
 
-    for(i=0;i<250;i++){
-        fprintf(out,"%f  ", i*0.0002);
+    for(i=0;i<500;i++){
+        fprintf(out,"%f  ", i*0.0001);
         for(j=0;j<200;j++){
             fgets(buffer,64,fp[j]);
             sscanf(buffer,"%f %f",&time,&dephasing);
