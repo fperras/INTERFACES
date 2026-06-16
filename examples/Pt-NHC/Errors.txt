@@ -1,0 +1,13 @@
+
+WARNING: Very low dephasing value of 0.044000 in TMSN2.txt can lead to over fitting
+You may obtain a better fit by eliminating this data point.
+
+NOTE: The initial structure does not pass the provided distance, angle, or dihedral constraints.
+
+NOTE: Best-fit structure is not within experimental error for curve 1. Cutoff values were altered for this curve
+
+NOTE: Best-fit structure is not within experimental error for curve 2. Cutoff values were altered for this curve
+
+NOTE: Best-fit structure is not within experimental error for curve 3. Cutoff values were altered for this curve
+
+NOTE: Best-fit structure is not within experimental error for curve 7. Cutoff values were altered for this curve
