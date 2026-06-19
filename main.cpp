@@ -874,6 +874,14 @@ int main(){
                 REDOR[index-1].spin=1;
                 printf("Will assume CT saturation for %s\n",REDOR[index-1].filename);
             }
+            else if(strcmp(keyword, "CT_inv")==0){
+                int index;
+                sscanf(buffer,"%s %d",keyword,&index);
+                REDOR[index-1].NA/=(REDOR[index-1].spin+1);
+                REDOR[index-1].NA*=2.;
+                REDOR[index-1].spin=1;
+                printf("Will assume CT inversion for %s\n",REDOR[index-1].filename);
+            }
     }
     fclose(input);
 
@@ -982,8 +990,6 @@ int main(){
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
     int top_thread;
 
-    int steps_initiated=0;
-
     #pragma omp parallel for
     for(long long int it=0;it<iterations;it++){
         //processor-specific variables
@@ -995,7 +1001,6 @@ int main(){
         char min_chi2_output_filename[128];
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
-	steps_initiated++;
 
         //new code for manipulating the cell dimensions
         long long int cell_position[8], cell_nom=0;
@@ -1100,6 +1105,7 @@ int main(){
             }
             else if(bond[jj].type==2){//bond angle
                 angle=(Pi/180.)*(bond_position[jj]*(bond[jj].dmax-bond[jj].dmin)/(bond[jj].N_steps-1) + bond[jj].dmin);
+                //printf("%lf\n",angle);
                 generate_bond_angle_rot_matrix(R,xyz_priv[bond[jj].atom0], xyz_priv[bond[jj].atom1], xyz_priv[bond[jj].atom2],angle);
                 //rotating all of atoms involved around the bond
                 for(ii=0;ii<bond[jj].N_aff_atoms; ii++){
@@ -1194,8 +1200,8 @@ int main(){
                 for(kk=0;kk<6;kk++){
                     fitted_unit_cell[kk]=new_unit_cell[kk];
                 }
-                printf("(%.2lf/100) New Chi2 minimum at %lf\n",(double)steps_initiated/iterations * 100.,chi2_min);
-                fprintf(log_file,"(%.2lf/100) New Chi2 minimum at %lf\n",(double)steps_initiated/iterations * 100., chi2_min);
+                printf("New Chi2 minimum at %lf\n",chi2_min);
+                fprintf(log_file,"New Chi2 minimum at %lf\n",chi2_min);
 
                 //Lastly, we save the distance and std indices for this structure, to write the best-fit curve
                 for(kk=0; kk<N_curves; kk++){
@@ -1294,8 +1300,6 @@ int main(){
     fprintf(log_file,"\nFinding all structures that agree with experiment\n");
     fprintf(log_file,"_____________________________________________________________________________________________________\n\n");
 
-    steps_initiated=0;
-
     #pragma omp parallel for
     for(long long int it=0;it<iterations;it++){
         if((acceptable_structures+other_structures)>max_acceptable_struct){
@@ -1312,7 +1316,6 @@ int main(){
         char min_chi2_output_filename[128];
         double curve_chi2[N_curves];
         copy_structure(N_atoms,xyz_ref,xyz_priv);
-        steps_initiated++;
 
         //new code for manipulating the cell dimensions
         long long int cell_position[8], cell_nom=0;
@@ -1489,8 +1492,8 @@ int main(){
                 if(deviation<cutoff_RMSD){
                     acceptable_structures++;
                     sprintf(min_chi2_output_filename, "%s_struct%d.mol2", filename_base, acceptable_structures);
-                    printf("(%.2lf/100) (%d) Acceptable structure found\n", (double)steps_initiated/iterations * 100., acceptable_structures);
-                    fprintf(log_file,"(%.2lf/100) (%d) Acceptable structure found\n", (double)steps_initiated/iterations * 100., acceptable_structures);
+                    printf("(%d) Acceptable structure found\n", acceptable_structures);
+                    fprintf(log_file,"(%d) Acceptable structure found\n", acceptable_structures);
                     write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
 
                     //The minimum and max distances are updated, if necessary, to print out the fitted curves ranges at the end.
@@ -1524,8 +1527,8 @@ int main(){
                 else{
                     other_structures++;
                     sprintf(min_chi2_output_filename, "other_%s_struct%d.mol2", filename_base, other_structures);
-                    printf("(%.2lf/100) (%d) Other acceptable structure found: rmsd = %lf\n", (double)steps_initiated/iterations * 100., other_structures, deviation);
-                    fprintf(log_file,"(%.2lf/100) (%d) Other acceptable structure found: rmsd = %lf\n", (double)steps_initiated/iterations * 100., other_structures, deviation);
+                    printf("(%d) Other acceptable structure found: rmsd = %lf\n", other_structures, deviation);
+                    fprintf(log_file,"(%d) Other acceptable structure found: rmsd = %lf\n", other_structures, deviation);
                     write_mol2(min_chi2_output_filename, N_bonds, atom_id, element, xyz_priv, atom_type, bond_id, ori_atom_id, tar_atom_id, bond_type);
                 }
             }
