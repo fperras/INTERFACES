@@ -138,6 +138,7 @@ void create_cif( char *compiled_mol2_filename, int N_atoms, vector<double> &unit
     fprintf(cif,"_cell_angle_alpha                 %lf\n",unit_cell[3]*180./Pi);
     fprintf(cif,"_cell_angle_beta                  %lf\n",unit_cell[4]*180./Pi);
     fprintf(cif,"_cell_angle_gamma                 %lf\n",unit_cell[5]*180./Pi);
+    fprintf(cif,"_cell_volume                      %lf\n",calc_cell_volume(unit_cell));
     fprintf(cif,"loop_\n");
     fprintf(cif,"_atom_site_label\n");
     fprintf(cif,"_atom_site_type_symbol\n");
