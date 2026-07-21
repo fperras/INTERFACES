@@ -432,7 +432,7 @@ double RDD_1A(const char *element1, const char *element2){
          else if(strcmp(nuclei[i],"La")==0)
             gamma[i]=49.3388;
          else if(strcmp(nuclei[i],"Pt")==0)
-            gamma[i]=85.987;
+            gamma[i]=74.505220;
          else if(strcmp(nuclei[i],"W")==0)
             gamma[i]=14.6169;
          else if(strcmp(nuclei[i],"Pb")==0)
