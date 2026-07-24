@@ -5,9 +5,9 @@
 #include <ctype.h>
 
 int main(){
-    char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
-    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, bulk=0, found_structures=0, ZCWg=99;
-    long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000;
+    char input_filename[120], mol2_filename[120], error_filename[128], buffer[6000], keyword[64], support[32];
+    int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, bulk=0, found_structures=0, ZCWg=99, sym_gen=0;
+    long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000, max_nrec=10000;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5, minor_structures_CL;
 
     //parameters instriduced for unit cell modifications, analogous to z_min/max and N_steps_Z, etc.
@@ -202,6 +202,12 @@ int main(){
             sprintf(keyword,"void");
         }
 
+        else if(strcmp(keyword, "sym_gen")==0){
+            //automatic generation of symmetry-generated atoms turned on
+            sym_gen=1;
+            sprintf(keyword,"void");
+        }
+
         else if(strcmp(keyword, "cell_cart")==0){
             //definition of the unit cell using the standard cell cartesian format
             //used for calculations on periodic systems
@@ -336,6 +342,10 @@ int main(){
         }
         else if(strcmp(keyword, "max_structures")==0){
             sscanf(buffer,"%s %d",keyword,&max_acceptable_struct);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "max_recoupled_spins")==0){
+            sscanf(buffer,"%s %d",keyword,&max_nrec);
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "cutoff_rmsd")==0){
@@ -802,6 +812,12 @@ int main(){
                 exit(1);
             }
         }
+        if(sym_gen){
+            error_file=fopen(error_filename,"a");
+            fprintf(error_file, "\nERROR: Symmetry generation may only be used with a defined unit cell.\n");
+            fclose(error_file);
+            exit(1);
+        }
     }
 
     //In the event that there are only 1 or 2 spins the fast approach is equivalent to the meticulous one.
@@ -884,6 +900,35 @@ int main(){
             }
     }
     fclose(input);
+
+    //Finding required symmetry-relatex atom positions for each curve
+    for(i=0; i<N_curves; i++){
+        REDOR[i].recoupled_index.resize(REDOR[i].detected.size());
+        REDOR[i].nx.resize(REDOR[i].detected.size());
+        REDOR[i].ny.resize(REDOR[i].detected.size());
+        REDOR[i].nz.resize(REDOR[i].detected.size());
+
+        if(sym_gen){
+            find_all_images(max_nrec,REDOR[i],xyz,cell);
+        }
+
+        //default case (no symmetry-generation)
+        else{
+            for(j=0;j<REDOR[i].detected.size();j++){
+                REDOR[i].recoupled_index[j].resize(REDOR[i].recoupled.size());
+                REDOR[i].nx[j].resize(REDOR[i].recoupled.size());
+                REDOR[i].ny[j].resize(REDOR[i].recoupled.size());
+                REDOR[i].nz[j].resize(REDOR[i].recoupled.size());
+
+                for(k=0;k<REDOR[i].recoupled.size();k++){
+                    REDOR[i].recoupled_index[j][k]=k;
+                    REDOR[i].nx[j][k]=0;
+                    REDOR[i].ny[j][k]=0;
+                    REDOR[i].nz[j][k]=0;
+                }
+            }
+        }
+    }
 
     //This function uses the bond list from the mol2 file to determine what atoms will be affected by
     //the rotation or elongation of a given bond.
@@ -1176,8 +1221,9 @@ int main(){
                     if(metic[kk]==0){
                         curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                      }
+
                     else
-                        curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv);
+                        curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,cell);
 
                     REDOR[kk].chi2_min = (curve_chi2[kk]<REDOR[kk].chi2_min)*curve_chi2[kk] + (curve_chi2[kk]>=REDOR[kk].chi2_min)*REDOR[kk].chi2_min;
                     chi2 = chi2 + curve_chi2[kk];
@@ -1473,7 +1519,7 @@ int main(){
                 if(metic[kk]==0)
                     curve_chi2[kk] = REDOR[kk].X2[d_indices[kk]][std_indices[kk]];
                 else
-                    curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv);
+                    curve_chi2[kk] = calculate_curve_Chi2(REDOR[kk],xyz_priv,cell);
 
                 if(curve_chi2[kk]>REDOR[kk].chi2_max){
                     check_chi2_threshold++;
@@ -1548,7 +1594,7 @@ int main(){
         if(meticulous==0)
             write_fits(filename_base,support,REDOR);
         else
-            write_fits_meticulous(filename_base,support,REDOR,xyz_it);
+            write_fits_meticulous(filename_base,support,REDOR,xyz_it,cell);
         exit(1);
     }
 
@@ -1598,7 +1644,7 @@ int main(){
     if(meticulous==0)
         write_fits(filename_base,support,REDOR);
     else
-        write_fits_meticulous(filename_base,support,REDOR,xyz_it);
+        write_fits_meticulous(filename_base,support,REDOR,xyz_it,cell);
     printf("_____________________________________________________________________________________________________\n");
     printf("\nStructure determination finished successfully\n");
 
@@ -1635,7 +1681,7 @@ int main(){
             int Npoints=REDOR[i].DSS0.size();
             REDOR[i].DSS0sim_prev.resize(Npoints, 0.);
             REDOR[i].DSS0sim_new.resize(Npoints, 0.);
-            precalculate_dephasing(REDOR[i].DSS0sim_prev,REDOR[i],xyz_best);
+            precalculate_dephasing(REDOR[i].DSS0sim_prev,REDOR[i],xyz_best,cell);
         }
 
         double current_CL=0.;
@@ -1816,7 +1862,7 @@ int main(){
 
                     double chi2=0;
                     for(kk=0; kk<N_curves; kk++){
-                        if(calculate_curve_Chi2_multi(curve_chi2[kk],REDOR[kk],xyz_priv)>REDOR[kk].chi2_max){
+                        if(calculate_curve_Chi2_multi(curve_chi2[kk],REDOR[kk],xyz_priv,cell)>REDOR[kk].chi2_max){
                             check_chi2_threshold++;
                             break;
                         }
@@ -1877,7 +1923,7 @@ int main(){
 
             for(i=0; i<N_curves; i++){
                 int Npoints=find_Npoints(REDOR[i].filename);
-                precalculate_dephasing(REDOR[i].DSS0sim_new,REDOR[i],xyz_minor[found_structures-1]);
+                precalculate_dephasing(REDOR[i].DSS0sim_new,REDOR[i],xyz_minor[found_structures-1],cell);
                 for(j=0;j<Npoints;j++){
                     REDOR[i].DSS0sim_prev[j]=(1.-new_weight)*REDOR[i].DSS0sim_prev[j] + new_weight*REDOR[i].DSS0sim_new[j];
                 }
@@ -1922,7 +1968,7 @@ int main(){
             printf("\nWriting the fitted RE(SP)DOR data to a file\n");
             fprintf(log_file,"\n_____________________________________________________________________________________________________\n");
             fprintf(log_file,"\nWriting the fitted RE(SP)DOR data to a file\n");
-            write_fits_multi(found_structures,filename_base,REDOR,xyz_minor,weights);
+            write_fits_multi(found_structures,filename_base,REDOR,xyz_minor,weights,cell);
         }
         else{
             printf("\nINTERFACES couldn't identify minor surface species within the specified %.1lf percent confidence interval\n",minor_structures_CL);

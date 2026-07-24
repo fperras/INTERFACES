@@ -1,6 +1,129 @@
 #include "REDOR_data.hpp"
 #include "3ZCW.h"
 
+struct Nvec{
+    //variable used for sorting by distance with compare_Nvec()
+    int nx,ny,nz;
+    int index;
+    double distance;
+} ;
+
+int compare_Nvec(const void *a, const void *b)
+{
+    //sorting function used in find_images() to sort symmetry-generated atoms by distance to a central detected atom
+    const Nvec *A = (const Nvec *)a;
+    const Nvec *B = (const Nvec *)b;
+
+    if (A->distance < B->distance) return -1;
+    if (A->distance > B->distance) return 1;
+    return 0;
+}
+
+void find_images(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Function to find all the required symmetry-generated atoms from a unit cell for a given detected spin
+    //Truncates the list to 97% of the sum of dipolar coupling squared, which gives a final 99% accuracy
+    //Number of this is then increased by the inverse cubic root of the abundance of the recoupled spins
+    int i,j,k,l;
+    double abundance = REDOR.NA;
+
+    //converting cell matrix to a cartesian form
+    vector<double> unit_cell;// a,b,c, alpha, beta, gamma
+    unit_cell.resize(6,1.);
+    calc_cell_dimensions(cell,unit_cell);
+
+    //Predicting an overestimate of the distance cutoff to build a supercell
+    double distance = 10000000.;
+    for(i=0;i<REDOR.recoupled.size();i++){
+        double d_temp = sqrt(pow(xyz[REDOR.detected[detected_index]][0]-xyz[REDOR.recoupled[i]][0],2.) + pow(xyz[REDOR.detected[detected_index]][1]-xyz[REDOR.recoupled[i]][1],2.) + pow(xyz[REDOR.detected[detected_index]][2]-xyz[REDOR.recoupled[i]][2],2.));
+        if(d_temp<distance)
+            distance=d_temp;
+    }
+    double cutoff = distance * 3.5/cbrt(abundance);
+
+    //Finding the bounds of the supercell that incorporates the cutoff calculated as above
+    int nmax[3];
+    for(i=0;i<3;i++){
+        nmax[i]= (int)(cutoff/fabs(unit_cell[i])+1);
+    }
+
+    //variable declarations
+    int images=0;
+    distance=0.;
+    vector< vector<double> > lattice_shift;
+    lattice_shift.resize(1, vector<double>(3,0.));
+    vector< vector<double> > n_vector;
+    n_vector.resize(1, vector<double>(3,0.));
+
+    //The vector dists will contain the structs Nvec which contain the lattice n multipliers, the atom index, and distance from detected atom
+    vector< Nvec > dists;
+    dists.resize((2*nmax[0]+1)*(2*nmax[1]+1)*(2*nmax[2]+1)*REDOR.recoupled.size());
+    double D2_final=0.;
+
+    //Here we populate the dists vector and calculate the final limit for the dipolar coupling squared (D2)
+    for(i=-nmax[0];i<=nmax[0];i++){
+        for(j=-nmax[1];j<=nmax[1];j++){
+            for(k=-nmax[2];k<=nmax[2];k++){
+                n_vector[0][0]=(double)i;
+                n_vector[0][1]=(double)j;
+                n_vector[0][2]=(double)k;
+                frac_to_xyz(1,lattice_shift,n_vector,cell);
+
+                for(l=0;l<REDOR.recoupled.size();l++){
+                    distance = sqrt(pow(xyz[REDOR.detected[detected_index]][0]-xyz[REDOR.recoupled[l]][0]+lattice_shift[0][0],2.) + pow(xyz[REDOR.detected[detected_index]][1]-xyz[REDOR.recoupled[l]][1]+lattice_shift[0][1],2.) + pow(xyz[REDOR.detected[detected_index]][2]-xyz[REDOR.recoupled[l]][2]+lattice_shift[0][2],2.));
+                    dists[images].nx=i;
+                    dists[images].ny=j;
+                    dists[images].nz=k;
+                    dists[images].index=l;
+                    dists[images].distance=distance;
+                    images++;
+                    D2_final+=pow(distance,-6.);
+    }}}}
+
+    //Sorting all images from closest to the detected atom to farthest
+    qsort(dists.data(),dists.size(),sizeof(Nvec),compare_Nvec);
+
+    //looping over images to find how many are needed to be 95% from teh final D2 value
+    images=0;
+    double D2=0.;
+    double D2_cutoff=0.97;
+    int keep=dists.size();
+    for(i=0;i<dists.size();i++){
+        images++;
+        D2+=pow(dists[i].distance,-6.);
+        if((D2/D2_final)>D2_cutoff){
+            keep=images/abundance;
+            break;
+            }
+    }
+
+    if(keep>max_nrec)
+        keep=max_nrec;
+
+    //removing the excess recoupled atom images from the vector
+    dists.resize(keep);
+
+    //storing the results with the REDOR data
+    REDOR.recoupled_index[detected_index].resize(dists.size());
+    REDOR.nx[detected_index].resize(dists.size());
+    REDOR.ny[detected_index].resize(dists.size());
+    REDOR.nz[detected_index].resize(dists.size());
+
+    for(i=0;i<dists.size();i++){
+        REDOR.recoupled_index[detected_index][i]=dists[i].index;
+        REDOR.nx[detected_index][i]=dists[i].nx;
+        REDOR.ny[detected_index][i]=dists[i].ny;
+        REDOR.nz[detected_index][i]=dists[i].nz;
+    }
+}
+
+void find_all_images(int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //Finds all symmetry-generated atom positions required to converge a given REDOR dataset
+    //from a unit cell specification, structure, and abundance.
+    for(int i=0;i<REDOR.detected.size();i++){
+        find_images(i,max_nrec,REDOR,xyz,cell);
+    }
+}
+
 double DSS0_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &xyz){
     //This function returns the dephasing form a group of detected spins as an average
     //for surface-to-atom REDOR
@@ -129,53 +252,18 @@ double coswDt(double sa, double ca, double sb, double cb, double sg, double cg, 
     return 0.0;
 }
 
-double REDOR_full_mean(double time, REDOR_dataset &REDOR, vector< vector<double> > &xyz){
+double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //This function returns the dephasing form a group of detected spins as an average
     //for intramolecular REDOR
 	double DSS0=0.;
 	double distance;
-	int i, ndet=REDOR.detected.size();
+	int i,j,k, ndet=REDOR.detected.size(), nrec;//, nrec=REDOR.recoupled.size();
 
-	if(REDOR.type==1){//REDOR
-    for(i=0; i<ndet; i++){
-        distance = get_effective_distance(REDOR,xyz,i);
-        DSS0 = DSS0+  REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
-    }
-	}
-
-	else if(REDOR.type==2){//SEDOR
-    for(i=0; i<ndet; i++){
-        distance = get_effective_distance(REDOR,xyz,i);
-        DSS0 = DSS0+  SEDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
-    }
-	}
-
-    return DSS0*REDOR.scaling_factor*REDOR.NA;
-}
-
-double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &xyz){
-    //This function returns the dephasing form a group of detected spins as an average
-    //for intramolecular REDOR
-	double DSS0=0.;
-	double distance;
-	int i,j,k, ndet=REDOR.detected.size(), nrec=REDOR.recoupled.size();
-
-	if(nrec==1){//uses the faster Bessel approach
-        if(REDOR.type==1){//REDOR
-            for(i=0; i<ndet; i++){
-                distance = get_effective_distance(REDOR,xyz,i);
-                DSS0 = DSS0+  REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
-            }
-            return DSS0*REDOR.scaling_factor*REDOR.NA;
-        }
-        else if(REDOR.type==2){//SEDOR
-            for(i=0; i<ndet; i++){
-                distance = get_effective_distance(REDOR,xyz,i);
-                DSS0 = DSS0+  SEDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
-            }
-            return DSS0*REDOR.scaling_factor*REDOR.NA;
-        }
-	}
+	//for finding symmetry images
+	vector< vector<double> > lattice_shift;
+    lattice_shift.resize(1, vector<double>(3,0.));
+    vector< vector<double> > n_vector;
+    n_vector.resize(1, vector<double>(3,0.));
 
 	//multi-spin numerical integration
 	//3-angle ZCW grids
@@ -189,26 +277,63 @@ double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &x
     cg.resize(N_orient,0.);
     intensity.resize(N_orient,0.);
     ZCWt(sa,ca,sb,cb,sg,cg,intensity,N_orient);
-    double x[nrec], y[nrec], z[nrec], xy[nrec], alphaD, betaD, D[nrec], DS;
-    double saD[nrec],caD[nrec],sbD[nrec],cbD[nrec];
+    double x, y, z, xy, alphaD, betaD, DS;
+
 
     //calculation of the multispin REDOR or RESPDOR datapoint intensity
 	for(i=0; i<ndet; i++){
+	    nrec=REDOR.recoupled_index[i].size();
+	    double D[nrec],saD[nrec],caD[nrec],sbD[nrec],cbD[nrec];
+	    int rec;
+        if(nrec==1){//uses the faster Bessel approach
+
+            n_vector[0][0]=(double) REDOR.nx[i][0];
+            n_vector[0][1]=(double) REDOR.ny[i][0];
+            n_vector[0][2]=(double) REDOR.nz[i][0];
+            frac_to_xyz(1,lattice_shift,n_vector,cell);
+
+            rec=REDOR.recoupled[REDOR.recoupled_index[i][0]];
+
+            x = xyz[REDOR.detected[i]][0]-xyz[rec][0]+lattice_shift[0][0];
+            y = xyz[REDOR.detected[i]][1]-xyz[rec][1]+lattice_shift[0][1];
+            z = xyz[REDOR.detected[i]][2]-xyz[rec][2]+lattice_shift[0][2];
+
+            distance = sqrt(x*x+y*y+z*z);
+
+            if(REDOR.type==1)//REDOR
+                DSS0 = DSS0+  REDOR.NA*REDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+
+            else if(REDOR.type==2)//SEDOR
+                    DSS0 = DSS0+  REDOR.NA*SEDOR_DSS0(RDD(REDOR.RDD1A,distance),time,REDOR.order_parameter,REDOR.spin)/ndet;
+
+        }
+
+        else{//multispin (nrec>1)
         //calculating polar angles
         for(j=0;j<nrec;j++){
-            x[j] = xyz[REDOR.detected[i]][0]-xyz[REDOR.recoupled[j]][0];
-            y[j] = xyz[REDOR.detected[i]][1]-xyz[REDOR.recoupled[j]][1];
-            z[j] = xyz[REDOR.detected[i]][2]-xyz[REDOR.recoupled[j]][2];
-            xy[j] = sqrt(x[j]*x[j]+y[j]*y[j]);
-            z[j] = fabs(z[j]);
-            if(x[j]>0.)
-                alphaD=atan(y[j]/x[j]);
-            else if(x[j]<0.)
-                alphaD=atan(y[j]/x[j])+Pi;
+
+            n_vector[0][0]=(double) REDOR.nx[i][j];
+            n_vector[0][1]=(double) REDOR.ny[i][j];
+            n_vector[0][2]=(double) REDOR.nz[i][j];
+
+            frac_to_xyz(1,lattice_shift,n_vector,cell);
+
+            rec=REDOR.recoupled[REDOR.recoupled_index[i][j]];
+
+            x = xyz[REDOR.detected[i]][0]-xyz[rec][0]+lattice_shift[0][0];
+            y = xyz[REDOR.detected[i]][1]-xyz[rec][1]+lattice_shift[0][1];
+            z = xyz[REDOR.detected[i]][2]-xyz[rec][2]+lattice_shift[0][2];
+
+            xy = sqrt(x*x+y*y);
+            z = fabs(z);
+            if(x>0.)
+                alphaD=atan(y/x);
+            else if(x<0.)
+                alphaD=atan(y/x)+Pi;
             else
                 alphaD=0.0;
-            betaD=atan(xy[j]/(z[j]));
-            D[j] = RDD(REDOR.RDD1A,sqrt(x[j]*x[j]+y[j]*y[j]+z[j]*z[j]))*REDOR.order_parameter;
+            betaD=atan(xy/(z));
+            D[j] = RDD(REDOR.RDD1A,sqrt(x*x+y*y+z*z))*REDOR.order_parameter;
             sincos(alphaD,&saD[j],&caD[j]);
             sincos(betaD,&sbD[j],&cbD[j]);
         }
@@ -234,10 +359,12 @@ double REDOR_full(double time, REDOR_dataset &REDOR, vector< vector<double> > &x
         }
 	}
 
+	}
+
     return DSS0*REDOR.scaling_factor;
 }
 
-double calculate_curve_Chi2(REDOR_dataset &REDOR, vector< vector<double> > &xyz){
+double calculate_curve_Chi2(REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //This function returns the Chi2 contribution from a single curve.
 
     int i, Npoints = REDOR.DSS0.size();
@@ -252,14 +379,14 @@ double calculate_curve_Chi2(REDOR_dataset &REDOR, vector< vector<double> > &xyz)
     }
 
     for(i=0; i<Npoints; i++){
-        DSS0_calc=REDOR_full(REDOR.tmix[i],REDOR,xyz);
+        DSS0_calc=REDOR_full(REDOR.tmix[i],REDOR,xyz,cell);
         X2 = X2 + pow((REDOR.DSS0[i]-DSS0_calc),2.) / pow((REDOR.DSS0[i]+REDOR.scaling_factor/10.),2.);
     }
 
     return X2;
 }
 
-void write_fits_meticulous(char *base_filename, const char *support_name, vector< REDOR_dataset > &REDOR, vector< vector< vector< vector<double> > > > &xyz){
+void write_fits_meticulous(char *base_filename, const char *support_name, vector< REDOR_dataset > &REDOR, vector< vector< vector< vector<double> > > > &xyz, vector< vector<double> > &cell){
     //This function writes out the REDOR curves form the best-fit structure as well as the range of dephasing for each curve
     //Data is stored in a CSV file
     //In the arrays listing the best-fin, minimum, and maximum distances and STDEV the indices have the following meaning:
@@ -306,11 +433,11 @@ void write_fits_meticulous(char *base_filename, const char *support_name, vector
                 fprintf(out,"%lf,,",DSS0);
             }
             else{
-                DSS0=REDOR_full(time,REDOR[j],xyz[j][0]);
+                DSS0=REDOR_full(time,REDOR[j],xyz[j][0],cell);
                 fprintf(out,"%lf,",DSS0);
-                DSS0=REDOR_full(time,REDOR[j],xyz[j][1]);
+                DSS0=REDOR_full(time,REDOR[j],xyz[j][1],cell);
                 fprintf(out,"%lf,",DSS0);
-                DSS0=REDOR_full(time,REDOR[j],xyz[j][2]);
+                DSS0=REDOR_full(time,REDOR[j],xyz[j][2],cell);
                 fprintf(out,"%lf,,",DSS0);
             }
         }
@@ -319,7 +446,7 @@ void write_fits_meticulous(char *base_filename, const char *support_name, vector
     fclose(out);
 }
 
-void precalculate_dephasing(vector<double> &calc_DSS0, REDOR_dataset &REDOR, vector< vector<double> > &xyz){
+void precalculate_dephasing(vector<double> &calc_DSS0, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //This function calculated the dephasing levels for a given set of xyz coordinates at the experimentally-specified recoupling times
     //Designed to be used with the calculate_curve_Chi2_multi() function.
 
@@ -333,12 +460,12 @@ void precalculate_dephasing(vector<double> &calc_DSS0, REDOR_dataset &REDOR, vec
     }
 
     for(i=0; i<Npoints; i++){
-        calc_DSS0[i]=REDOR_full(REDOR.tmix[i],REDOR,xyz);
+        calc_DSS0[i]=REDOR_full(REDOR.tmix[i],REDOR,xyz,cell);
     }
     return;
 }
 
-double calculate_curve_Chi2_multi(double *curve_chi2, REDOR_dataset &REDOR, vector< vector<double> > &xyz){
+double calculate_curve_Chi2_multi(double *curve_chi2, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //This function returns the Chi2 contributions from a single curve in a system containing multiple molecules
     //The function loops over site populations from 5% to 50 % in 5% increments and stores the curve_chi2 values
     //in an array of the same name. These values can then be compared to determine whether the site is statistically
@@ -349,7 +476,7 @@ double calculate_curve_Chi2_multi(double *curve_chi2, REDOR_dataset &REDOR, vect
     double DSS0_calc, weight, minimum=100000000.;
     vector<double> new_DSS0;
     new_DSS0.resize(Npoints, 0.);
-    precalculate_dephasing(new_DSS0,REDOR,xyz);
+    precalculate_dephasing(new_DSS0,REDOR,xyz,cell);
 
     if(REDOR.type==0){//surface-to-atom
         for(j=0;j<10;j++){
@@ -376,7 +503,7 @@ double calculate_curve_Chi2_multi(double *curve_chi2, REDOR_dataset &REDOR, vect
     return minimum;
 }
 
-void write_fits_multi(int found_structures, char *base_filename, vector< REDOR_dataset > &REDOR, vector< vector< vector<double> > > &xyz, vector<double> &weights){
+void write_fits_multi(int found_structures, char *base_filename, vector< REDOR_dataset > &REDOR, vector< vector< vector<double> > > &xyz, vector<double> &weights, vector< vector<double> > &cell){
     //This function writes out the REDOR curves for the multi-model fit
     //Data is stored in a CSV file
     //In the arrays listing the best-fin, minimum, and maximum distances and STDEV the indices have the following meaning:
@@ -425,7 +552,7 @@ void write_fits_multi(int found_structures, char *base_filename, vector< REDOR_d
 
                 DSS0=0.;
                 for(k=0;k<found_structures;k++){
-                    DSS0 += weights[k]*REDOR_full(time,REDOR[j],xyz[k]);
+                    DSS0 += weights[k]*REDOR_full(time,REDOR[j],xyz[k],cell);
                 }
                 fprintf(out,"%lf,,",DSS0);
             }

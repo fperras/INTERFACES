@@ -18,6 +18,14 @@ struct REDOR_dataset{
     double chi2_max;
     double chi2_best;
 
+    //variables added to find the required nearest symmetry images for OTFG-REDOR calculation
+    //All three vectors will have the same length and would supercede recoupled if used
+    int symmetry_generation; //index used to determine whether this feature is used (1 true, 0 false)
+    vector< vector<int> > recoupled_index; //first index would be for the specific detected spin
+    vector< vector<int> > nx;
+    vector< vector<int> > ny;
+    vector< vector<int> > nz;
+
     //for the otf-REDOR generation, ability to change the powder averaging
     int ZCWg;
 
