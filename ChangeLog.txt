@@ -47,7 +47,7 @@
 	  abundance 'curve index' 'abundance in %'
 
 	-Added support for general and periodic solids. This is triggered again with the bulk keyword or with the definition
-     of a unit cell. The structure is still represented the same way but the mol2 file should be instead given as a seupercell
+     of a unit cell. The structure is still represented the same way but the mol2 file should be instead given as a unit cell or supercell
      The unit cell is then defined in the INTERFACES input file either as a cartesian cell matrix, for example:
 
      cell_cart
@@ -55,7 +55,7 @@
       0    18   0
       0    0  24.56217 
 
-      or with the unit cell definitions, although there the program assumes that teh mol2 file is properly ordered with a along x
+      or with the unit cell definitions, although there the program assumes that the mol2 file is properly ordered with a along x
       as per the usual definition of the cell matrix. This is defined as:
 
 	  cell_abc 'a' 'b' 'c' 'alpha' 'beta' 'gamma'
@@ -92,3 +92,12 @@
 -New Features
 	-You can specify that a pulse only inverts the central transition of a quadrupole with the following command:
 	  CT_inv 'curve index'
+
+07/24/26
+-New Features
+	-Much more accessible implementation for crystal structures. Rather than defining an arbitrarily large supercell, 
+	 you can give the program only the unit cell and then have it create on-the-fly all the symmetry-generated images
+	 that it needs to converge the REDOR curves. This is innitiated with the keyword "sym_gen". If you with to limit
+	 the number of symmetyr-generated atoms you can state something like:
+	 max_recoupled_spins 'maximum you want'
+	  
