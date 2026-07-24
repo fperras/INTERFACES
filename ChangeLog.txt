@@ -100,4 +100,5 @@
 	 that it needs to converge the REDOR curves. This is innitiated with the keyword "sym_gen". If you with to limit
 	 the number of symmetyr-generated atoms you can state something like:
 	 max_recoupled_spins 'maximum you want'
+	-The program will also remove pesky symmetry-related atoms on cell edges.
 	  
