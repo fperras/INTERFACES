@@ -18,7 +18,7 @@ int main(){
         cell_steps[i]=1;
     }
 
-    double surface_collision_distance = 1.5, interatomic_collision_distance = 1.5;
+    double surface_collision_distance = 1.5, interatomic_collision_distance = 1.3;
     vector<vector<int> > REDOR_det_index, REDOR_rec_index;
     vector< REDOR_dataset > REDOR;
     vector< vector<double> > cell;
@@ -909,6 +909,7 @@ int main(){
         REDOR[i].nz.resize(REDOR[i].detected.size());
 
         if(sym_gen){
+            //remove_all_wyckoff(max_nrec,REDOR[i],xyz,cell);
             find_all_images(max_nrec,REDOR[i],xyz,cell);
         }
 
