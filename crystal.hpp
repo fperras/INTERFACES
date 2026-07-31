@@ -1,5 +1,8 @@
 using namespace std;
 #include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <string>
 
 struct fragments{
     int N_fragments;
@@ -125,3 +128,131 @@ void get_fragments(int N_atoms, vector< vector<int> > &neighbors, fragments *fra
     //Using the cell information, the mean xyz coordinates are converted to fractiona ones
     xyz_to_frac(fragment->N_fragments,fragment->mol_xyz,fragment->mol_frac,cell);
 }
+
+struct Nvec{
+    //variable used for sorting by distance with compare_Nvec()
+    int nx,ny,nz;
+    int index;
+    double distance;
+} ;
+
+int compare_Nvec(const void *a, const void *b)
+{
+    //sorting function used in find_images() to sort symmetry-generated atoms by distance to a central detected atom
+    const Nvec *A = (const Nvec *)a;
+    const Nvec *B = (const Nvec *)b;
+
+    if (A->distance < B->distance) return -1;
+    if (A->distance > B->distance) return 1;
+    return 0;
+}
+
+void find_extra_atoms(vector<int> &extra_atoms, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+    //This function creates a list of the atom indices from symmetyr-generated atoms that were included in the mol2 file
+    //This list is used to prevent double-counting of some atoms with sym_gen or density calculations.
+    int i,j;
+
+    //conversion to fractional coordinates
+    vector< vector<double> > frac;
+    frac.resize(xyz.size(), vector<double>(3,0.));
+    xyz_to_frac(xyz.size(),xyz,frac,cell);
+
+    //finding symmetry-related atoms on cell edges
+    for(i=0;i<xyz.size();i++){
+        for(j=0;j<xyz.size();j++){
+            if(fabs(frac[i][0]-(frac[j][0]-1.))<1e-6){
+                if((fabs(frac[i][1]-frac[j][1])<1e-6)&&(fabs(frac[i][2]-frac[j][2])<1e-6)){
+                    extra_atoms.push_back(i);
+                    break;
+                }
+            }
+            else if(fabs(frac[i][1]-(frac[j][1]-1.))<1e-6){
+                if((fabs(frac[i][0]-frac[j][0])<1e-6)&&(fabs(frac[i][2]-frac[j][2])<1e-6)){
+                    extra_atoms.push_back(i);
+                    break;
+                }
+            }
+            else if(fabs(frac[i][2]-(frac[j][2]-1.))<1e-6){
+                if((fabs(frac[i][0]-frac[j][0])<1e-6)&&(fabs(frac[i][1]-frac[j][1])<1e-6)){
+                    extra_atoms.push_back(i);
+                    break;
+                }
+            }
+        }
+    }
+    sort(extra_atoms.rbegin(),extra_atoms.rend());
+}
+
+double atomic_mass(const char* element){
+    //This function returns the atomic mass of an element.
+    char error_filename[128];
+	sprintf(error_filename,"Errors.txt");
+    FILE *error_file;
+
+    static const std::unordered_map<std::string,double> mass = {
+        {"H", 1.008}, {"He", 4.003},
+        {"Li", 6.94}, {"Be", 9.012}, {"B", 10.81}, {"C", 12.01}, {"N", 14.01},
+        {"O", 16.00}, {"F", 19.00}, {"Ne", 20.18},
+
+        {"Na", 22.99}, {"Mg", 24.31}, {"Al", 26.98}, {"Si", 28.09}, {"P", 30.97},
+        {"S", 32.06}, {"Cl", 35.45}, {"Ar", 39.95},
+
+        {"K", 39.10}, {"Ca", 40.08}, {"Sc", 44.96}, {"Ti", 47.87}, {"V", 50.94},
+        {"Cr", 52.00}, {"Mn", 54.94}, {"Fe", 55.85}, {"Co", 58.93}, {"Ni", 58.69},
+        {"Cu", 63.55}, {"Zn", 65.38},
+
+        {"Ga", 69.72}, {"Ge", 72.63}, {"As", 74.92}, {"Se", 78.97}, {"Br", 79.90},
+        {"Kr", 83.80},
+
+        {"Rb", 85.47}, {"Sr", 87.62}, {"Y", 88.91}, {"Zr", 91.22}, {"Nb", 92.91},
+        {"Mo", 95.95}, {"Tc", 98.00}, {"Ru", 101.07}, {"Rh", 102.91}, {"Pd", 106.42},
+        {"Ag", 107.87}, {"Cd", 112.41},
+
+        {"In", 114.82}, {"Sn", 118.71}, {"Sb", 121.76}, {"Te", 127.60}, {"I", 126.90},
+        {"Xe", 131.29},
+
+        {"Cs", 132.91}, {"Ba", 137.33}, {"La", 138.91}, {"Ce", 140.12}, {"Pr", 140.91},
+        {"Nd", 144.24}, {"Pm", 145.00}, {"Sm", 150.36}, {"Eu", 151.96}, {"Gd", 157.25},
+        {"Tb", 158.93}, {"Dy", 162.50}, {"Ho", 164.93}, {"Er", 167.26}, {"Tm", 168.93},
+        {"Yb", 173.05}, {"Lu", 174.97},
+
+        {"Hf", 178.49}, {"Ta", 180.95}, {"W", 183.84}, {"Re", 186.21}, {"Os", 190.23},
+        {"Ir", 192.22}, {"Pt", 195.08}, {"Au", 196.97}, {"Hg", 200.59},
+
+        {"Tl", 204.38}, {"Pb", 207.2}, {"Bi", 208.98}, {"Po", 209.00}, {"At", 210.00},
+        {"Rn", 222.00},
+
+        {"Fr", 223.00}, {"Ra", 226.00}, {"Ac", 227.00}, {"Th", 232.04}, {"Pa", 231.04},
+        {"U", 238.03}, {"Np", 237.00}, {"Pu", 244.00}, {"Am", 243.00}, {"Cm", 247.00},
+        {"Bk", 247.00}, {"Cf", 251.00}, {"Es", 252.00}, {"Fm", 257.00}, {"Md", 258.00},
+        {"No", 259.00}, {"Lr", 262.00},
+
+        {"Rf", 267.00}, {"Db", 270.00}, {"Sg", 271.00}, {"Bh", 270.00}, {"Hs", 277.00},
+        {"Mt", 276.00}, {"Ds", 281.00}, {"Rg", 280.00}, {"Cn", 285.00}, {"Nh", 284.00},
+        {"Fl", 289.00}, {"Mc", 288.00}, {"Lv", 293.00}, {"Ts", 294.00}, {"Og", 294.00}
+    };
+
+    auto it = mass.find(element);
+    if(it != mass.end())
+        return it->second;
+
+    error_file=fopen(error_filename,"a");
+    fprintf(error_file, "\nERROR: Mass for '%s' is unknown\n", element);
+    fclose(error_file);
+    exit(1);
+}
+
+double density(int N_atoms,char (*element)[3], vector<double> &unit_cell, const vector<int> &extra_atoms){
+    //This function returns the density of a crystalline solid using the atomic masses and
+    //the cell volume. symmetry-related extra atoms are removed from the calculation.
+    int i,j;
+    double cell_mass=0.;
+    for(int i = 0; i < N_atoms; i++){
+        if(std::find(extra_atoms.begin(), extra_atoms.end(), i) == extra_atoms.end()){
+            cell_mass += atomic_mass(element[i]);
+        }
+    }
+
+    return 1.660539*cell_mass/calc_cell_volume(unit_cell);
+}
+

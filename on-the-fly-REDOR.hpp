@@ -1,80 +1,21 @@
 #include "REDOR_data.hpp"
 #include "3ZCW.h"
 
-struct Nvec{
-    //variable used for sorting by distance with compare_Nvec()
-    int nx,ny,nz;
-    int index;
-    double distance;
-} ;
-
-int compare_Nvec(const void *a, const void *b)
-{
-    //sorting function used in find_images() to sort symmetry-generated atoms by distance to a central detected atom
-    const Nvec *A = (const Nvec *)a;
-    const Nvec *B = (const Nvec *)b;
-
-    if (A->distance < B->distance) return -1;
-    if (A->distance > B->distance) return 1;
-    return 0;
-}
-
-void remove_wyckoff(int detected_index, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void remove_extra_atoms_REDOR(int detected_index, REDOR_dataset &REDOR, vector<int> &extra_atoms){
     int i,j;
 
-    //creating coordinates list for the recoupled atoms
-    vector< vector<double> > xyz_sub;
-    xyz_sub.resize(REDOR.recoupled.size(), vector<double>(3,0.));
-    for(i=0;i<REDOR.recoupled.size();i++){
-        xyz_sub[i][0]=xyz[REDOR.recoupled[i]][0];
-        xyz_sub[i][1]=xyz[REDOR.recoupled[i]][1];
-        xyz_sub[i][2]=xyz[REDOR.recoupled[i]][2];
-    }
-
-    //conversion to fractional coordinates
-    vector< vector<double> > frac;
-    frac.resize(REDOR.recoupled.size(), vector<double>(3,0.));
-    xyz_to_frac(REDOR.recoupled.size(),xyz_sub,frac,cell);
-
-    vector<int> extra_atoms;
-
-    //finding symmetry-related atoms on cell edges
-    for(i=0;i<REDOR.recoupled.size();i++){
-        for(j=0;j<REDOR.recoupled.size();j++){
-            if(fabs(frac[i][0]-(frac[j][0]-1.))<1e-6){
-                if((fabs(frac[i][1]-frac[j][1])<1e-6)&&(fabs(frac[i][2]-frac[j][2])<1e-6)){
-                    extra_atoms.push_back(i);
-                    break;
-                }
-            }
-            else if(fabs(frac[i][1]-(frac[j][1]-1.))<1e-6){
-                if((fabs(frac[i][0]-frac[j][0])<1e-6)&&(fabs(frac[i][2]-frac[j][2])<1e-6)){
-                    extra_atoms.push_back(i);
-                    break;
-                }
-            }
-            else if(fabs(frac[i][2]-(frac[j][2]-1.))<1e-6){
-                if((fabs(frac[i][1]-frac[j][1])<1e-6)&&(fabs(frac[i][1]-frac[j][1])<1e-6)){
-                    extra_atoms.push_back(i);
-                    break;
-                }
-            }
+    for(i=REDOR.recoupled.size()-1; i>=0; i--){
+        if(std::find(extra_atoms.begin(), extra_atoms.end(), REDOR.recoupled[i]) != extra_atoms.end()){
+            REDOR.recoupled.erase(REDOR.recoupled.begin() + i);
         }
     }
-
-    //removing the extra atoms from the recoupled atom list
-    sort(extra_atoms.rbegin(),extra_atoms.rend());
-    for(i=0;i<extra_atoms.size();i++){
-        REDOR.recoupled.erase(REDOR.recoupled.begin()+extra_atoms[i]);
-    }
-
 }
 
-void remove_all_wyckoff(REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void remove_all_extra_atoms_REDOR(REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell,vector<int> &extra_atoms){
     //Finds all symmetry-generated atom positions required to converge a given REDOR dataset
     //from a unit cell specification, structure, and abundance.
     for(int i=0;i<REDOR.detected.size();i++){
-        remove_wyckoff(i,REDOR,xyz,cell);
+        remove_extra_atoms_REDOR(i,REDOR,extra_atoms);
     }
 }
 
