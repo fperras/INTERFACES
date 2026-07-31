@@ -97,8 +97,14 @@
 -New Features
 	-Much more accessible implementation for crystal structures. Rather than defining an arbitrarily large supercell, 
 	 you can give the program only the unit cell and then have it create on-the-fly all the symmetry-generated images
-	 that it needs to converge the REDOR curves. This is innitiated with the keyword "sym_gen". If you with to limit
-	 the number of symmetyr-generated atoms you can state something like:
+	 that it needs to converge the REDOR curves. This is initiated with the keyword "sym_gen". If you with to limit
+	 the number of symmetry-generated atoms you can state something like:
 	 max_recoupled_spins 'maximum you want'
 	-The program will also remove pesky symmetry-related atoms on cell edges.
-	  
+
+07/31/26
+-New Features
+	-Added the function density_constraint which allows one to constrain cell optimizations by a known density
+	-Added the function min_recoupled_spins that allows the user to increase the number of spins used in sym_gen
+-Bug Fixes
+	-Minor bug fixed in the code that check for symmetry-duplicated atoms.
