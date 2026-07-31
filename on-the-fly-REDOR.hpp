@@ -19,7 +19,7 @@ int compare_Nvec(const void *a, const void *b)
     return 0;
 }
 
-void remove_wyckoff(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void remove_wyckoff(int detected_index, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     int i,j;
 
     //creating coordinates list for the recoupled atoms
@@ -70,16 +70,15 @@ void remove_wyckoff(int detected_index,int max_nrec, REDOR_dataset &REDOR, vecto
 
 }
 
-void remove_all_wyckoff(int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void remove_all_wyckoff(REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //Finds all symmetry-generated atom positions required to converge a given REDOR dataset
     //from a unit cell specification, structure, and abundance.
     for(int i=0;i<REDOR.detected.size();i++){
-        remove_wyckoff(i,max_nrec,REDOR,xyz,cell);
+        remove_wyckoff(i,REDOR,xyz,cell);
     }
 }
 
-
-void find_images(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void find_images(int detected_index,int max_nrec, int min_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //Function to find all the required symmetry-generated atoms from a unit cell for a given detected spin
     //Truncates the list to 95% of the sum of dipolar coupling squared, which gives a final 99% accuracy
     //Number of this is then increased by the inverse cubic root of the abundance of the recoupled spins
@@ -99,6 +98,10 @@ void find_images(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< 
             distance=d_temp;
     }
     double cutoff = distance * 3.5/cbrt(abundance);
+    double cutoff2 = 1.2*cbrt((calc_cell_volume(unit_cell)*min_nrec)/double(REDOR.recoupled.size()))/2.;
+
+    if (cutoff2>cutoff)
+        cutoff=cutoff2;
 
     //Finding the bounds of the supercell that incorporates the cutoff calculated as above
     int nmax[3];
@@ -150,11 +153,14 @@ void find_images(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< 
     for(i=0;i<dists.size();i++){
         images++;
         D2+=pow(dists[i].distance,-6.);
-        if((D2/D2_final)>D2_cutoff){
+        if(((D2/D2_final)>D2_cutoff)){
             keep=images/abundance;
             break;
             }
     }
+
+    if(images<min_nrec)
+        keep=min_nrec;
 
     if(keep>max_nrec)
         keep=max_nrec;
@@ -176,11 +182,11 @@ void find_images(int detected_index,int max_nrec, REDOR_dataset &REDOR, vector< 
     }
 }
 
-void find_all_images(int max_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
+void find_all_images(int max_nrec, int min_nrec, REDOR_dataset &REDOR, vector< vector<double> > &xyz, vector< vector<double> > &cell){
     //Finds all symmetry-generated atom positions required to converge a given REDOR dataset
     //from a unit cell specification, structure, and abundance.
     for(int i=0;i<REDOR.detected.size();i++){
-        find_images(i,max_nrec,REDOR,xyz,cell);
+        find_images(i,max_nrec,min_nrec,REDOR,xyz,cell);
     }
 }
 

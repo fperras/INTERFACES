@@ -5,9 +5,9 @@
 #include <ctype.h>
 /*Use this version of the main.cpp file when using a cluster. It uses an argument for the input file rather than asking for it in the command line*/
 int main(int argc, char *argv[]){
-    char input_filename[120], mol2_filename[120], error_filename[128], buffer[256], keyword[64], support[32];
+    char input_filename[120], mol2_filename[120], error_filename[128], buffer[6000], keyword[64], support[32];
     int  i, j, k, l, line_Atoms, line_Bonds, N_atoms=0, N_bonds=0, N_curves=0, N_constraints=0, meticulous=0, bulk=0, found_structures=0, ZCWg=99, sym_gen=0;
-    long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000, max_nrec=10000;
+    long long int  N_steps_Z=1, N_steps_X=1, N_steps_Y=1, N_rotatable_bonds=0,max_acceptable_struct = 1000, max_nrec=10000, min_nrec=1;
     double threshold_accuracy=90., z_min=0., z_max=0., cutoff_RMSD=2.5, minor_structures_CL;
 
     //parameters instriduced for unit cell modifications, analogous to z_min/max and N_steps_Z, etc.
@@ -355,6 +355,12 @@ int main(int argc, char *argv[]){
         }
         else if(strcmp(keyword, "max_recoupled_spins")==0){
             sscanf(buffer,"%s %d",keyword,&max_nrec);
+            sprintf(keyword,"void");
+        }
+        else if(strcmp(keyword, "min_recoupled_spins")==0){
+            sscanf(buffer,"%s %d",keyword,&min_nrec);
+            if(min_nrec>max_nrec)
+                max_nrec=min_nrec+1;
             sprintf(keyword,"void");
         }
         else if(strcmp(keyword, "cutoff_rmsd")==0){
@@ -918,7 +924,8 @@ int main(int argc, char *argv[]){
         REDOR[i].nz.resize(REDOR[i].detected.size());
 
         if(sym_gen){
-            find_all_images(max_nrec,REDOR[i],xyz,cell);
+            remove_all_wyckoff(REDOR[i],xyz,cell);
+            find_all_images(max_nrec,min_nrec,REDOR[i],xyz,cell);
         }
 
         //default case (no symmetry-generation)
