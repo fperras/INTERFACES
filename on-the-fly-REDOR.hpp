@@ -106,6 +106,9 @@ void find_images(int detected_index,int max_nrec, int min_nrec, REDOR_dataset &R
     if(keep>max_nrec)
         keep=max_nrec;
 
+    //In the case of strong couplings, the above guideline fails, so this doubles the number of recoupled spins
+    if(keep<2./(abundance))
+        keep=(int)(2./(abundance));
     //removing the excess recoupled atom images from the vector
     dists.resize(keep);
 
