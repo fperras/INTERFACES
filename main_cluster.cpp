@@ -433,6 +433,8 @@ int main(int argc, char *argv[]){
         REDOR[i].order_parameter=1.;
         REDOR[i].NA=1.;
         REDOR[i].ZCWg=ZCWg;
+        REDOR[i].det_isotope=1;
+        REDOR[i].rec_isotope=1;
     }
 
     int counter=0;
@@ -838,6 +840,36 @@ int main(int argc, char *argv[]){
                 }
                 sprintf(keyword,"void");
             }
+            else if(strcmp(keyword, "alternate_det_isotope")==0){//given in percent
+                int index;
+                sscanf(buffer,"%s %d",keyword,&index);
+
+                if(index>N_curves){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Detected isotope selection given for an inexistent REDOR curve\n");
+                    fclose(error_file);
+                }
+
+                else{
+                    REDOR[index-1].det_isotope=2;
+                }
+                sprintf(keyword,"void");
+            }
+            else if(strcmp(keyword, "alternate_rec_isotope")==0){//given in percent
+                int index;
+                sscanf(buffer,"%s %d",keyword,&index);
+
+                if(index>N_curves){
+                    error_file=fopen(error_filename,"a");
+                    fprintf(error_file, "\nERROR: Recoupled isotope selection given for an inexistent REDOR curve\n");
+                    fclose(error_file);
+                }
+
+                else{
+                    REDOR[index-1].rec_isotope=2;
+                }
+                sprintf(keyword,"void");
+            }
         }//end while
     fclose(input);
 
@@ -905,8 +937,8 @@ int main(int argc, char *argv[]){
         if(REDOR[i].type==0)
             load_simulations(support, REDOR[i]);
         else{
-            REDOR[i].RDD1A=RDD_1A(REDOR[i].det_element, REDOR[i].rec_element);
-            REDOR[i].spin=spin(REDOR[i].rec_element);
+            REDOR[i].RDD1A=RDD_1A(REDOR[i].det_element, REDOR[i].rec_element,REDOR[i].det_isotope, REDOR[i].rec_isotope);
+            REDOR[i].spin=spin(REDOR[i].rec_element,REDOR[i].rec_isotope);
         }
 
         if(metic[i]==0){

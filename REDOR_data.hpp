@@ -7,6 +7,8 @@ struct REDOR_dataset{
     vector<int> recoupled;
     int type;// 0 for surface-REDOR; 1 for intramolecular-REDOR; 2 for intramolecular-SEDOR (not yet implemented)
     int spin;
+    int det_isotope;
+    int rec_isotope;
     char rec_element[3];
     char det_element[3];
     double RDD1A;
@@ -242,27 +244,34 @@ int load_exp_curve(REDOR_dataset &REDOR){
 	return 0;
 }
 
-int spin(const char *element){
+int spin(const char *element, int isotope){
     //Returns the spin of the nuclide, multiplied by 2 as an integer
     //Assumes that the preferred isotope is used.
+    //Alternate isotope options are: 2H, 6Li, 14N, 10B, 37Cl, 65Cu, 69Ga, 79Br, 87Rb, 97Mo, 101Ru, 107Ag, 113Cd, 117Sn, 135Ba, and 203Tl
     char error_filename[128];
 	sprintf(error_filename,"Errors.txt");
     FILE *error_file;
 
-        if(strcmp(element,"H")==0)
-            return 1;
-	else if(strcmp(element,"D")==0)
-            return 2;
-        else if(strcmp(element,"Li")==0)
-            return 3;
+        if(strcmp(element,"H")==0){
+            if(isotope==2)
+                return 2;
+            return 1;}
+        else if(strcmp(element,"Li")==0){
+            if(isotope==2)
+                return 2;
+            return 3;}
         else if(strcmp(element,"Be")==0)
             return 3;
-         else if(strcmp(element,"B")==0)
-            return 3;
+         else if(strcmp(element,"B")==0){
+            if(isotope==2)
+                return 6;
+            return 3;}
          else if(strcmp(element,"C")==0)
             return 1;
-         else if(strcmp(element,"N")==0)
-            return 1;
+         else if(strcmp(element,"N")==0){
+            if(isotope==2)
+                return 2;
+            return 1;}
          else if(strcmp(element,"O")==0)
             return 5;
          else if(strcmp(element,"F")==0)
@@ -277,19 +286,31 @@ int spin(const char *element){
             return 1;
          else if(strcmp(element,"P")==0)
             return 1;
+         else if(strcmp(element,"S")==0)
+            return 3;
          else if(strcmp(element,"Cl")==0)
             return 3;
+         else if(strcmp(element,"K")==0)
+            return 3;
+         else if(strcmp(element,"Ca")==0)
+            return 7;
          else if(strcmp(element,"Sc")==0)
             return 7;
          else if(strcmp(element,"V")==0)
             return 7;
+         else if(strcmp(element,"Cr")==0)
+            return 3;
          else if(strcmp(element,"Mn")==0)
             return 5;
+         else if(strcmp(element,"Fe")==0)
+            return 1;
          else if(strcmp(element,"Co")==0)
             return 7;
          else if(strcmp(element,"Cu")==0)
             return 3;
          else if(strcmp(element,"Ga")==0)
+            return 3;
+         else if(strcmp(element,"Ge")==0)
             return 3;
          else if(strcmp(element,"As")==0)
             return 3;
@@ -297,16 +318,26 @@ int spin(const char *element){
             return 1;
          else if(strcmp(element,"Br")==0)
             return 3;
-         else if(strcmp(element,"Rb")==0)
-            return 5;
+         else if(strcmp(element,"Rb")==0){
+            if(isotope==2)
+                return 3;
+            return 5;}
+         else if(strcmp(element,"Sr")==0)
+            return 9;
          else if(strcmp(element,"Y")==0)
             return 1;
+         else if(strcmp(element,"Zr")==0)
+            return 5;
          else if(strcmp(element,"Nb")==0)
             return 9;
          else if(strcmp(element,"Mo")==0)
             return 5;
          else if(strcmp(element,"Tc")==0)
             return 9;
+         else if(strcmp(element,"Ru")==0){
+            if(isotope==2)
+                return 4;
+            return 3;}
          else if(strcmp(element,"Rh")==0)
             return 1;
          else if(strcmp(element,"Ag")==0)
@@ -325,11 +356,13 @@ int spin(const char *element){
             return 5;
          else if(strcmp(element,"Cs")==0)
             return 7;
+         else if(strcmp(element,"Ba")==0)
+            return 3;
          else if(strcmp(element,"La")==0)
             return 7;
-         else if(strcmp(element,"Pt")==0)
-            return 1;
          else if(strcmp(element,"W")==0)
+            return 1;
+         else if(strcmp(element,"Pt")==0)
             return 1;
          else if(strcmp(element,"Pb")==0)
             return 1;
@@ -343,10 +376,11 @@ int spin(const char *element){
          }
 }
 
-double RDD_1A(const char *element1, const char *element2){
+double RDD_1A(const char *element1, const char *element2, int isotope1, int isotope2){
     //This function return the dipolar coupling constant between two nuclei that are at a 1A distance from each other
     //Assumes that the preferred isotope is used.
     //If it is 1H or 19F it is further scaled down to correspond to SREDOR
+    //Alternate isotope options are: 2H, 6Li, 14N, 10B, 37Cl, 65Cu, 69Ga, 79Br, 87Rb, 97Mo, 101Ru, 107Ag, 113Cd, 117Sn, 135Ba, and 203Tl
     char error_filename[128];
 	sprintf(error_filename,"Errors.txt");
     FILE *error_file;
@@ -354,25 +388,37 @@ double RDD_1A(const char *element1, const char *element2){
     char nuclei[2][3];
     sprintf(nuclei[0],"%s",element1); sprintf(nuclei[1],"%s",element2);
     int i;
+    int iso[2] = {isotope1, isotope2};
     double gamma[2], SREDOR=1.;
 
     for(i=0;i<2;i++){
         if(strcmp(nuclei[i],"H")==0){
-			gamma[i]=346.5883;
-			SREDOR = 0.5554;
+            if(iso[i]==2)
+                gamma[i]=53.203;
+            else{
+                gamma[i]=346.5883;
+                SREDOR = 0.5554;
+            }
 		}
-		else if(strcmp(nuclei[i],"D")==0)
-            gamma[i]=53.203;
         else if(strcmp(nuclei[i],"Li")==0)
-            gamma[i]=134.7074;
+            if(iso[i]==2)
+                gamma[i]=51.0080;
+            else
+                gamma[i]=134.7074;
         else if(strcmp(nuclei[i],"Be")==0)
             gamma[i]=48.7054;
          else if(strcmp(nuclei[i],"B")==0)
-            gamma[i]=111.2191;
+            if(iso[i]==2)
+                gamma[i]=37.2429;
+            else
+                gamma[i]=111.2191;
          else if(strcmp(nuclei[i],"C")==0)
             gamma[i]=87.1683;
          else if(strcmp(nuclei[i],"N")==0)
-            gamma[i]=35.1433;
+            if(iso[i]==2)
+                gamma[i]=25.0531;
+            else
+                gamma[i]=35.1433;
          else if(strcmp(nuclei[i],"O")==0)
             gamma[i]=47.0036;
          else if(strcmp(nuclei[i],"F")==0){
@@ -389,46 +435,92 @@ double RDD_1A(const char *element1, const char *element2){
             gamma[i]=68.9103;
          else if(strcmp(nuclei[i],"P")==0)
             gamma[i]=140.4299;
+         else if(strcmp(nuclei[i],"S")==0)
+            gamma[i]=26.6324;
          else if(strcmp(nuclei[i],"Cl")==0)
-            gamma[i]=33.9978;
+            if(iso[i]==2)
+                gamma[i]=28.2996;
+            else
+                gamma[i]=33.9978;
+         else if(strcmp(nuclei[i],"K")==0)
+            gamma[i]=16.1952;
+         else if(strcmp(nuclei[i],"Ca")==0)
+            gamma[i]=23.3597;
          else if(strcmp(nuclei[i],"Sc")==0)
             gamma[i]=84.3247;
          else if(strcmp(nuclei[i],"V")==0)
             gamma[i]=91.2781;
+         else if(strcmp(nuclei[i],"Cr")==0)
+            gamma[i]=19.6302;
          else if(strcmp(nuclei[i],"Mn")==0)
             gamma[i]=86.0926;
+         else if(strcmp(nuclei[i],"Fe")==0)
+            gamma[i]=11.2462;
          else if(strcmp(nuclei[i],"Co")==0)
             gamma[i]=82.0342;
          else if(strcmp(nuclei[i],"Cu")==0)
-            gamma[i]=92.1368;
+            if(iso[i]==2)
+                gamma[i]=98.5182;
+            else
+                gamma[i]=92.1368;
          else if(strcmp(nuclei[i],"Ga")==0)
-            gamma[i]=105.9912;
+            if(iso[i]==2)
+                gamma[i]=83.4186;
+            else
+                gamma[i]=105.9912;
          else if(strcmp(nuclei[i],"As")==0)
             gamma[i]=95.5456;
          else if(strcmp(nuclei[i],"Se")==0)
             gamma[i]=66.4019;
          else if(strcmp(nuclei[i],"Br")==0)
-            gamma[i]=93.9245;
+            if(iso[i]==2)
+                gamma[i]=87.1337;
+            else
+                gamma[i]=93.9245;
          else if(strcmp(nuclei[i],"Rb")==0)
-            gamma[i]=33.5898;
+            if(iso[i]==2)
+                gamma[i]=113.8322;
+            else
+                gamma[i]=33.5898;
+         else if(strcmp(nuclei[i],"Sr")==0)
+            gamma[i]=15.0737;
          else if(strcmp(nuclei[i],"Y")==0)
             gamma[i]=17.0531;
+         else if(strcmp(nuclei[i],"Zr")==0)
+            gamma[i]=32.3555;
          else if(strcmp(nuclei[i],"Nb")==0)
             gamma[i]=85.0839;
          else if(strcmp(nuclei[i],"Mo")==0)
-            gamma[i]=22.6851;
+            if(iso[i]==2)
+                gamma[i]=23.1644;
+            else
+                gamma[i]=22.6851;
          else if(strcmp(nuclei[i],"Tc")==0)
             gamma[i]=78.3291;
+         else if(strcmp(nuclei[i],"Ru")==0)
+            if(iso[i]==2)
+                gamma[i]=17.8397;
+            else
+                gamma[i]=15.9223;
          else if(strcmp(nuclei[i],"Rh")==0)
             gamma[i]=10.9707;
          else if(strcmp(nuclei[i],"Ag")==0)
-            gamma[i]=16.2185;
+            if(iso[i]==2)
+                gamma[i]=14.1074;
+            else
+                gamma[i]=16.2185;
          else if(strcmp(nuclei[i],"Cd")==0)
-            gamma[i]=77.2267;
+            if(iso[i]==2)
+                gamma[i]=77.2266;
+            else
+                gamma[i]=77.2267;
          else if(strcmp(nuclei[i],"In")==0)
             gamma[i]=76.4012;
          else if(strcmp(nuclei[i],"Sn")==0)
-            gamma[i]=129.9657;
+            if(iso[i]==2)
+                gamma[i]=124.2276;
+            else
+                gamma[i]=129.9657;
          else if(strcmp(nuclei[i],"Sb")==0)
             gamma[i]=83.4788;
          else if(strcmp(nuclei[i],"Te")==0)
@@ -437,6 +529,11 @@ double RDD_1A(const char *element1, const char *element2){
             gamma[i]=69.8246;
          else if(strcmp(nuclei[i],"Cs")==0)
             gamma[i]=45.7750;
+         else if(strcmp(nuclei[i],"Ba")==0)
+            if(iso[i]==2)
+                gamma[i]=34.6624;
+            else
+                gamma[i]=38.7752;
          else if(strcmp(nuclei[i],"La")==0)
             gamma[i]=49.3388;
          else if(strcmp(nuclei[i],"Pt")==0)
@@ -446,7 +543,10 @@ double RDD_1A(const char *element1, const char *element2){
          else if(strcmp(nuclei[i],"Pb")==0)
             gamma[i]=73.5387;
          else if(strcmp(nuclei[i],"Tl")==0)
-            gamma[i]=203.3;
+            if(iso[i]==2)
+                gamma[i]=201.3198;
+            else
+                gamma[i]=203.3000;
          else{
             error_file=fopen(error_filename,"a");
             fprintf(error_file, "\nERROR: Gyromagnetic ratio for '%s' is unknown\n", nuclei[i]);
