@@ -108,3 +108,15 @@
 	-Added the function min_recoupled_spins that allows the user to increase the number of spins used in sym_gen
 -Bug Fixes
 	-Minor bug fixed in the code that check for symmetry-duplicated atoms.
+
+11/10/26
+-New Features
+	-Added support for some elements/isotopes that were omitted in the previous versions.
+	-The previous version of the program only had a single defined isotope per element.
+     The ability to use less conventional isotopes has been added with the following commands
+
+       alternate_det_isotope 'curve_index'
+       alternate_rec_isotope 'curve_index'
+
+     The alternate isotopes that can be specified by these commands are: 2H, 6Li, 14N, 10B, 37Cl, 65Cu, 69Ga, 
+     79Br, 87Rb, 97Mo, 101Ru, 107Ag, 113Cd, 117Sn, 135Ba, and 203Tl
