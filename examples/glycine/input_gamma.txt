@@ -1,0 +1,15 @@
+structure g-glycine.mol2
+
+cell_abc 7.3950 7.3950 5.75 90 90 120
+sym_gen
+
+intramolecular-REDOR Ca_gamma.txt 1
+detected_spins 5
+recoupled_element N
+
+intramolecular-REDOR COO_gamma.txt 1
+detected_spins 8
+recoupled_element N
+
+abundance 1 8
+abundance 2 8

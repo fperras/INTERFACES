@@ -1,0 +1,11 @@
+structure Ti2CCl2.mol2
+
+cell_abc 3.217061 3.217061 8.738998 90 90 120
+sym_gen
+
+intramolecular-SEDOR 13C-35Cl_SEDOR.txt 1.0
+detected_spins 1
+recoupled_element Cl
+
+abundance 1 75.77
+CT_sat 1

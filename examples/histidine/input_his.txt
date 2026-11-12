@@ -1,0 +1,42 @@
+structure his.mol2
+
+cell_abc 15.36 8.92 6.88 90 90 90
+sym_gen
+
+//structural alterations
+confidence_level 73
+expand_a 0.8 1.4 20
+expand_b 0.8 1.4 20
+expand_c 0.8 1.4 20
+
+//REDOR datasets
+intramolecular-REDOR CO.txt 1.0
+detected_spins 1
+recoupled_element Cl
+
+intramolecular-REDOR CA.txt 1.0
+detected_spins 2
+recoupled_element Cl
+
+intramolecular-REDOR CB.txt 1.0
+detected_spins 3
+recoupled_element Cl
+
+intramolecular-REDOR CD2.txt 1.0
+detected_spins 6
+recoupled_element Cl
+
+intramolecular-REDOR CE1.txt 1.0
+detected_spins 5
+recoupled_element Cl
+
+intramolecular-REDOR CG.txt 1.0
+detected_spins 4
+recoupled_element Cl
+
+abundance 1 75.77
+abundance 2 75.77
+abundance 3 75.77
+abundance 4 75.77
+abundance 5 75.77
+abundance 6 75.77
